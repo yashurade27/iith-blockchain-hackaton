@@ -14,29 +14,47 @@ const redeemSchema = z.object({
 
 /**
  * GET /api/rewards
- * List all available rewards
+ * List all available rewards with pagination and search
  */
 router.get('/', async (req: AuthRequest, res: Response, next) => {
   try {
-    const { category, isActive } = req.query;
+    const { category, isActive, search, page, limit } = req.query;
+
+    const pageNum = Math.max(parseInt(page as string) || 1, 1);
+    const limitNum = Math.min(parseInt(limit as string) || 50, 100);
+    const offset = (pageNum - 1) * limitNum;
 
     const where: any = {};
+    
     if (isActive !== undefined) {
       where.isActive = isActive === 'true';
     }
-    if (category) {
+    
+    if (category && category !== 'All') {
       where.category = String(category);
     }
 
-    const rewards = await prisma.reward.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        _count: {
-          select: { redemptions: true },
+    if (search) {
+      where.OR = [
+        { name: { contains: String(search), mode: 'insensitive' } },
+        { description: { contains: String(search), mode: 'insensitive' } },
+      ];
+    }
+
+    const [rewards, total] = await Promise.all([
+      prisma.reward.findMany({
+        where,
+        skip: offset,
+        take: limitNum,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          _count: {
+            select: { redemptions: true },
+          },
         },
-      },
-    });
+      }),
+      prisma.reward.count({ where }),
+    ]);
 
     res.json({
       success: true,
@@ -45,6 +63,12 @@ router.get('/', async (req: AuthRequest, res: Response, next) => {
           ...r,
           redemptionCount: r._count.redemptions,
         })),
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(total / limitNum),
+        },
       },
     });
   } catch (error) {

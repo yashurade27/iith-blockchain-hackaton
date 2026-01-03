@@ -104,9 +104,23 @@ class ApiClient {
   }
 
   // Rewards
-  async getRewards(params?: { category?: string; isActive?: string }) {
+  async getRewards(params?: { 
+    category?: string; 
+    isActive?: string; 
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
     const query = new URLSearchParams(params as any).toString();
-    return this.request<{ rewards: any[] }>(`/rewards?${query}`);
+    return this.request<{ 
+      rewards: any[];
+      pagination: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      };
+    }>(`/rewards?${query}`);
   }
 
   async redeemReward(rewardId: string, quantity: number) {
