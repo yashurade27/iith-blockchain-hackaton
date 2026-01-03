@@ -68,7 +68,7 @@ export default function Rewards() {
               <CardContent>
                 <div className="flex justify-between items-center">
                   <div>
-                    <div className="text-2xl font-bold">{formatTokenAmount(reward.cost)} GDG</div>
+                    <div className="text-2xl font-bold">{formatTokenAmount(reward.cost)} G-CORE</div>
                     <div className="text-sm text-muted-foreground">
                       {reward.stock} in stock
                     </div>

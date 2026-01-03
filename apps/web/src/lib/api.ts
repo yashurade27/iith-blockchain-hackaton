@@ -64,6 +64,13 @@ class ApiClient {
     return this.request<{ user: any }>(`/users/${address}`);
   }
 
+  async updateUser(data: { name: string }) {
+    return this.request<{ user: any }>('/users/me', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
   // Leaderboard
   async getLeaderboard(params?: {
     timeframe?: string;
@@ -71,7 +78,20 @@ class ApiClient {
     page?: number;
     limit?: number;
   }) {
-    const query = new URLSearchParams(params as any).toString();
+    const page = params?.page || 1;
+    const limit = params?.limit || 50;
+    const offset = (page - 1) * limit;
+    
+    const queryParams = {
+      ...params,
+      offset: offset.toString(),
+      limit: limit.toString(),
+    };
+    
+    // Remove page from query params as backend expects offset
+    delete (queryParams as any).page;
+
+    const query = new URLSearchParams(queryParams as any).toString();
     return this.request<{
       leaderboard: any[];
       pagination: {
@@ -105,6 +125,10 @@ class ApiClient {
       page: number;
       limit: number;
     }>(`/transactions?${query}`);
+  }
+
+  async getPublicTransactions(limit: number = 20) {
+    return this.request<{ transactions: any[] }>(`/transactions/public?limit=${limit}`);
   }
 
   // Admin

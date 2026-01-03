@@ -8,6 +8,32 @@ import { logger } from '../utils/logger';
 const router = Router();
 
 /**
+ * PATCH /api/users/me
+ * Update current user profile
+ */
+router.patch('/me', authenticate, async (req: AuthRequest, res: Response, next) => {
+  try {
+    if (!req.user) {
+      throw new AppError('Authentication required', 401);
+    }
+
+    const { name } = req.body;
+
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { name },
+    });
+
+    res.json({
+      success: true,
+      data: { user },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * GET /api/users/:address
  * Get user profile by wallet address
  */
