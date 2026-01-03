@@ -120,6 +120,43 @@ class ApiClient {
     );
   }
 
+  async batchDistributeTokens(distributions: Array<{
+    walletAddress: string;
+    amount: number;
+    activityType: string;
+    description: string;
+  }>) {
+    return this.request<{
+      totalRequests: number;
+      successCount: number;
+      failureCount: number;
+      results: any[];
+    }>('/admin/batch-distribute', {
+      method: 'POST',
+      body: JSON.stringify(distributions),
+    });
+  }
+
+  async verifyActivity(data: {
+    userId: string;
+    activityType: string;
+    points: number;
+    metadata?: { eventId?: string; description?: string };
+  }) {
+    return this.request<{
+      activity: {
+        id: string;
+        userId: string;
+        type: string;
+        points: number;
+        verifiedAt: string;
+      };
+    }>('/admin/verify-activity', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async getRedemptions(params?: { status?: string; page?: number; limit?: number }) {
     const query = new URLSearchParams(params as any).toString();
     return this.request<{
