@@ -16,7 +16,7 @@ export default function Rewards() {
     queryFn: () => api.getRewards({ isActive: 'true' }),
   });
 
-  const handleRedeem = async (rewardId: string, cost: number, name: string) => {
+  const handleRedeem = async (rewardId: string, name: string) => {
     try {
       setRedeeming(rewardId);
       await api.redeemReward(rewardId, 1);
@@ -79,7 +79,7 @@ export default function Rewards() {
               <CardFooter>
                 <Button
                   className="w-full"
-                  onClick={() => handleRedeem(reward.id, reward.cost, reward.name)}
+                  onClick={() => handleRedeem(reward.id, reward.name)}
                   disabled={reward.stock === 0 || redeeming === reward.id}
                 >
                   {redeeming === reward.id ? (

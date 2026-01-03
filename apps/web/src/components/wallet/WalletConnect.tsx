@@ -1,128 +1,164 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Wallet } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useWalletStore } from '@/stores/walletStore';
-import { truncateAddress, formatTokenAmount } from '@/lib/utils';
-import { getProvider, switchToCorrectNetwork, CHAIN_ID } from '@/lib/web3';
-import { api } from '@/lib/api';
-import { useToast } from '@/hooks/use-toast';
+import { Button } from '../ui/button';
+import { useWalletStore, initializeWallet } from '../../stores/walletStore';
+import { isMetaMaskInstalled, formatAddress, getTokenBalance } from '../../lib/web3';
 
 export default function WalletConnect() {
-  const { toast } = useToast();
-  const { address, isConnected, isConnecting, balance, setAddress, setChainId, setIsConnecting, setUser, setBalance } = useWalletStore();
-  const [error, setError] = useState<string | null>(null);
+  const {
+    address,
+    isConnected,
+    isConnecting,
+    error,
+    isCorrectNetwork,
+    connect,
+    disconnect,
+    balance,
+    setBalance,
+  } = useWalletStore();
 
-  const connectWallet = async () => {
+  const [showError, setShowError] = useState(false);
+  const [loadingBalance, setLoadingBalance] = useState(false);
+
+  // Initialize wallet on mount
+  useEffect(() => {
+    initializeWallet();
+  }, []);
+
+  // Fetch token balance when address changes
+  useEffect(() => {
+    if (address && isCorrectNetwork) {
+      fetchTokenBalance();
+    }
+  }, [address, isCorrectNetwork]);
+
+  // Show/hide error
+  useEffect(() => {
+    if (error) {
+      setShowError(true);
+      const timer = setTimeout(() => setShowError(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  const fetchTokenBalance = async () => {
     try {
-      setIsConnecting(true);
-      setError(null);
+      setLoadingBalance(true);
+      if (!address) return;
 
-      if (typeof window.ethereum === 'undefined') {
-        throw new Error('Please install MetaMask to use this app');
-      }
-
-      // Request account access
-      const accounts = await window.ethereum.request({
-        method: 'eth_requestAccounts',
-      });
-
-      if (!accounts || accounts.length === 0) {
-        throw new Error('No accounts found');
-      }
-
-      const account = accounts[0];
-      
-      // Get chain ID
-      const provider = await getProvider();
-      const network = await provider.getNetwork();
-      const chainId = Number(network.chainId);
-
-      // Check if on correct network
-      if (chainId !== CHAIN_ID) {
-        await switchToCorrectNetwork();
-      }
-
-      // Connect to backend
-      const { user, token } = await api.connectWallet(account);
-      api.setToken(token);
-
-      setAddress(account);
-      setChainId(chainId);
-      setUser(user);
-
-      // Get balance
-      try {
-        const balanceData = await api.getUserBalance(account);
-        setBalance(balanceData.formatted);
-      } catch (err) {
-        console.error('Failed to fetch balance:', err);
-        setBalance('0');
-      }
-
-      toast({
-        title: 'Wallet Connected',
-        description: `Connected to ${truncateAddress(account)}`,
-      });
-
-      // Listen for account changes
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', handleChainChanged);
-    } catch (err: any) {
-      console.error('Wallet connection error:', err);
-      setError(err.message);
-      toast({
-        title: 'Connection Failed',
-        description: err.message,
-        variant: 'destructive',
-      });
+      const balanceData = await getTokenBalance(address);
+      setBalance(balanceData);
+    } catch (err) {
+      console.error('Error fetching balance:', err);
     } finally {
-      setIsConnecting(false);
+      setLoadingBalance(false);
     }
   };
 
-  const handleAccountsChanged = (accounts: string[]) => {
-    if (accounts.length === 0) {
-      disconnectWallet();
-    } else {
-      window.location.reload();
+  const handleConnect = async () => {
+    try {
+      await connect();
+    } catch (err) {
+      console.error('Connection failed:', err);
     }
   };
 
-  const handleChainChanged = () => {
-    window.location.reload();
-  };
-
-  const disconnectWallet = () => {
-    setAddress(null);
-    setChainId(null);
-    setUser(null);
-    setBalance('0');
-    api.clearToken();
-    
-    if (window.ethereum) {
-      window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-      window.ethereum.removeListener('chainChanged', handleChainChanged);
+  const handleDisconnect = async () => {
+    try {
+      await disconnect();
+    } catch (err) {
+      console.error('Disconnection failed:', err);
     }
   };
 
-  if (isConnected && address) {
+  // MetaMask not installed
+  if (!isMetaMaskInstalled()) {
     return (
-      <div className="flex items-center gap-4">
-        <div className="text-right">
-          <div className="text-sm font-medium">{formatTokenAmount(balance)} GDG</div>
-          <div className="text-xs text-muted-foreground">{truncateAddress(address)}</div>
-        </div>
-        <Button variant="outline" onClick={disconnectWallet}>
-          Disconnect
+      <Button
+        onClick={() => window.open('https://metamask.io', '_blank')}
+        className="bg-orange-500 hover:bg-orange-600 text-white font-semibold"
+      >
+        <Wallet className="mr-2 h-4 w-4" />
+        Install MetaMask
+      </Button>
+    );
+  }
+
+  // Wallet not connected
+  if (!isConnected) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Button
+          onClick={handleConnect}
+          disabled={isConnecting}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+        >
+          <Wallet className="mr-2 h-4 w-4" />
+          {isConnecting ? 'Connecting...' : 'Connect Wallet'}
         </Button>
+        {showError && error && (
+          <div className="text-xs text-red-500 bg-red-50 p-2 rounded border border-red-200">
+            {error}
+          </div>
+        )}
       </div>
     );
   }
 
+  // Wallet connected
   return (
-    <Button onClick={connectWallet} disabled={isConnecting}>
-      <Wallet className="mr-2 h-4 w-4" />
-      {isConnecting ? 'Connecting...' : 'Connect Wallet'}
-    </Button>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isCorrectNetwork ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className="text-sm font-mono text-gray-700">
+              {formatAddress(address!)}
+            </span>
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            {isCorrectNetwork ? (
+              <span className="text-green-600">✓ Sepolia Network</span>
+            ) : (
+              <span className="text-red-600">✗ Wrong Network</span>
+            )}
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleDisconnect}
+          disabled={isConnecting}
+          className="text-gray-600 hover:text-gray-900"
+        >
+          Disconnect
+        </Button>
+      </div>
+
+      {isCorrectNetwork && balance && (
+        <div className="bg-blue-50 p-2 rounded border border-blue-200">
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-gray-600">G-CORE Balance:</span>
+            <span className="text-sm font-semibold text-blue-900">
+              {loadingBalance ? 'Loading...' : balance.formatted}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {!isCorrectNetwork && (
+        <div className="bg-yellow-50 p-2 rounded border border-yellow-200">
+          <p className="text-xs text-yellow-800">
+            Please switch to Sepolia network in MetaMask
+          </p>
+        </div>
+      )}
+
+      {showError && error && (
+        <div className="text-xs text-red-500 bg-red-50 p-2 rounded border border-red-200">
+          {error}
+        </div>
+      )}
+    </div>
   );
 }

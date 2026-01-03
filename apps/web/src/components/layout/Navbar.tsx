@@ -3,7 +3,6 @@ import { Wallet, Trophy, Gift, User, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import WalletConnect from '@/components/wallet/WalletConnect';
 import { useWalletStore } from '@/stores/walletStore';
-import { cn } from '@/lib/utils';
 
 export default function Navbar() {
   const location = useLocation();

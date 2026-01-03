@@ -32,7 +32,7 @@ export default function Profile() {
           </div>
           <div>
             <div className="text-sm text-muted-foreground">Token Balance</div>
-            <div className="text-2xl font-bold">{balance} GDG</div>
+            <div className="text-2xl font-bold">{balance?.formatted || '0'} GDG</div>
           </div>
         </CardContent>
       </Card>
