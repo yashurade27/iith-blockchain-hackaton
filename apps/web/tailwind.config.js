@@ -17,6 +17,19 @@ export default {
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
+        google: {
+          blue: '#4285F4',
+          red: '#EA4335',
+          yellow: '#FBBC04',
+          green: '#34A853',
+          grey: '#202124',
+        },
+        pastel: {
+          blue: '#D2E3FC',
+          red: '#FAD2CF',
+          yellow: '#FEEFC3',
+          green: '#CEEAD6',
+        },
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
@@ -50,6 +63,12 @@ export default {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+        xl: '1.5rem',
+        '2xl': '2rem',
+        '3xl': '3rem',
+      },
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
       },
       keyframes: {
         'accordion-down': {

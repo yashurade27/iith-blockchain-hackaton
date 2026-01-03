@@ -16,8 +16,8 @@ export default function Leaderboard() {
       <div className="flex items-center gap-3">
         <Trophy className="h-8 w-8 text-primary" />
         <div>
-          <h1 className="text-4xl font-bold">Leaderboard</h1>
-          <p className="text-muted-foreground">Top contributors and token holders</p>
+          <h1 className="text-4xl font-bold uppercase">G-CORE Leaderboard</h1>
+          <p className="text-muted-foreground">GDG PCCOER Chapter</p>
         </div>
       </div>
 

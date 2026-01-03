@@ -46,7 +46,9 @@ const marketplaceContract = new ethers.Contract(
 
 export async function getTokenBalance(address: string): Promise<{ balance: string; formatted: string }> {
   try {
-    const balance = await tokenContract.balanceOf(address);
+    // Ensure address is checksummed
+    const checksumAddress = ethers.getAddress(address);
+    const balance = await tokenContract.balanceOf(checksumAddress);
     const decimals = await tokenContract.decimals();
     const formatted = ethers.formatUnits(balance, decimals);
     
@@ -67,11 +69,12 @@ export async function distributeTokens(
   description: string
 ): Promise<string> {
   try {
+    const checksumAddress = ethers.getAddress(address);
     const decimals = await tokenContract.decimals();
     const tokenAmount = ethers.parseUnits(amount.toString(), decimals);
 
     const tx = await distributorContract.distributeTokens(
-      address,
+      checksumAddress,
       tokenAmount,
       activityType,
       description
@@ -94,10 +97,11 @@ export async function batchDistributeTokens(
   descriptions: string[]
 ): Promise<string> {
   try {
+    const checksumRecipients = recipients.map(r => ethers.getAddress(r));
     const decimals = await tokenContract.decimals();
     const tokenAmounts = amounts.map((amount) => ethers.parseUnits(amount.toString(), decimals));
 
-    const tx = await distributorContract.batchDistribute(recipients, tokenAmounts, descriptions);
+    const tx = await distributorContract.batchDistribute(checksumRecipients, tokenAmounts, descriptions);
 
     logger.info(`Batch distribution transaction sent: ${tx.hash}`);
     const receipt = await tx.wait();
@@ -117,6 +121,8 @@ export async function redeemTokens(
   quantity: number
 ): Promise<string> {
   try {
+    // userAddress is not used in the contract call but good to validate
+    ethers.getAddress(userAddress); 
     const decimals = await tokenContract.decimals();
     const amount = ethers.parseUnits(tokenAmount.toString(), decimals);
 
@@ -160,10 +166,11 @@ export async function getTransactionHistory(
   toBlock: 'latest' | number = 'latest'
 ): Promise<TransactionEvent[]> {
   try {
+    const checksumAddress = ethers.getAddress(address);
     const events: TransactionEvent[] = [];
 
     // Get Transfer events (token transfers)
-    const transferFilter = tokenContract.filters.Transfer(null, address);
+    const transferFilter = tokenContract.filters.Transfer(null, checksumAddress);
     const transferEvents = await tokenContract.queryFilter(transferFilter, fromBlock, toBlock);
 
     for (const event of transferEvents) {
@@ -184,7 +191,7 @@ export async function getTransactionHistory(
     }
 
     // Get incoming Transfer events (transfers to address)
-    const incomingTransferFilter = tokenContract.filters.Transfer(address);
+    const incomingTransferFilter = tokenContract.filters.Transfer(checksumAddress);
     const incomingTransferEvents = await tokenContract.queryFilter(incomingTransferFilter, fromBlock, toBlock);
 
     for (const event of incomingTransferEvents) {
@@ -207,7 +214,7 @@ export async function getTransactionHistory(
     }
 
     // Get distribution events for this address
-    const distributionFilter = distributorContract.filters.TokensDistributed(address);
+    const distributionFilter = distributorContract.filters.TokensDistributed(checksumAddress);
     const distributionEvents = await distributorContract.queryFilter(distributionFilter, fromBlock, toBlock);
 
     for (const event of distributionEvents) {
@@ -232,7 +239,7 @@ export async function getTransactionHistory(
     }
 
     // Get redemption events for this address
-    const redemptionFilter = marketplaceContract.filters.TokensRedeemed(address);
+    const redemptionFilter = marketplaceContract.filters.TokensRedeemed(checksumAddress);
     const redemptionEvents = await marketplaceContract.queryFilter(redemptionFilter, fromBlock, toBlock);
 
     for (const event of redemptionEvents) {
@@ -269,9 +276,10 @@ export async function monitorTokenTransfers(
   callback: (event: TransactionEvent) => void
 ): Promise<() => void> {
   try {
+    const checksumAddress = ethers.getAddress(address);
     // Listen for incoming transfers
-    const incomingFilter = tokenContract.filters.Transfer(null, address);
-    const outgoingFilter = tokenContract.filters.Transfer(address);
+    const incomingFilter = tokenContract.filters.Transfer(null, checksumAddress);
+    const outgoingFilter = tokenContract.filters.Transfer(checksumAddress);
 
     const handleTransfer = async (from: string, to: string, value: bigint, event: any) => {
       const block = await provider.getBlock(event.blockNumber);
