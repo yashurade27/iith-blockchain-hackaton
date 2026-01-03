@@ -1,0 +1,8 @@
+{
+  "name": "@gdg-token-rewards/config",
+  "version": "1.0.0",
+  "main": "./index.js",
+  "scripts": {
+    "clean": "rm -rf dist"
+  }
+}

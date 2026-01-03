@@ -1,0 +1,129 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  walletAddress String   @unique
+  email         String?  @unique
+  name          String?
+  role          Role     @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  transactions  Transaction[]
+  redemptions   Redemption[]
+  activities    Activity[]
+
+  @@index([walletAddress])
+}
+
+model Transaction {
+  id          String            @id @default(uuid())
+  userId      String
+  amount      Int
+  type        TransactionType
+  description String
+  txHash      String?
+  status      TransactionStatus @default(PENDING)
+  createdAt   DateTime          @default(now())
+  
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Activity {
+  id          String       @id @default(uuid())
+  userId      String
+  type        ActivityType
+  points      Int
+  metadata    Json?
+  verifiedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([verifiedAt])
+  @@index([createdAt])
+}
+
+model Reward {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  cost        Int
+  stock       Int
+  imageUrl    String?
+  category    String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  
+  redemptions Redemption[]
+
+  @@index([isActive])
+  @@index([category])
+}
+
+model Redemption {
+  id          String           @id @default(uuid())
+  userId      String
+  rewardId    String
+  quantity    Int              @default(1)
+  status      RedemptionStatus @default(PENDING)
+  txHash      String?
+  createdAt   DateTime         @default(now())
+  
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reward      Reward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([rewardId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum TransactionType {
+  EARN
+  REDEEM
+  TRANSFER
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum ActivityType {
+  CONTEST_PARTICIPATION
+  EVENT_ATTENDANCE
+  WORKSHOP_COMPLETION
+  CONTENT_CREATION
+  VOLUNTEERING
+}
+
+enum RedemptionStatus {
+  PENDING
+  APPROVED
+  FULFILLED
+  CANCELLED
+}
