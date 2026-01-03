@@ -56,6 +56,9 @@ router.get('/:address', async (req: AuthRequest, res: Response, next) => {
         redemptions: {
           orderBy: { createdAt: 'desc' },
           take: 5,
+          include: {
+            reward: true,
+          },
         },
       },
     });
