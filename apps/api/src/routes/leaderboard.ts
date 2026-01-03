@@ -40,6 +40,7 @@ router.get('/', async (req: Request, res: Response, next) => {
       users.map(async (user) => {
         try {
           const balance = await getTokenBalance(user.walletAddress);
+          logger.info(`Fetched balance for ${user.walletAddress}: ${balance.formatted}`);
           return {
             ...user,
             balance: balance.formatted,

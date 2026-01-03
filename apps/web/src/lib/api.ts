@@ -39,7 +39,8 @@ class ApiClient {
       throw new Error(error.error || `HTTP ${response.status}`);
     }
 
-    return response.json();
+    const json = await response.json();
+    return json.data || json;
   }
 
   // Auth
@@ -72,10 +73,13 @@ class ApiClient {
   }) {
     const query = new URLSearchParams(params as any).toString();
     return this.request<{
-      entries: any[];
-      total: number;
-      page: number;
-      limit: number;
+      leaderboard: any[];
+      pagination: {
+        total: number;
+        page: number;
+        limit: number;
+        offset: number;
+      };
     }>(`/leaderboard?${query}`);
   }
 

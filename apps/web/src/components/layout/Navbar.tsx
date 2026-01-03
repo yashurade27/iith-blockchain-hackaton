@@ -73,11 +73,6 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button asChild variant="default" size="sm" className="hidden md:inline-flex">
-            <Link to="https://gdg.community.dev/" target="_blank" rel="noreferrer">
-              Register Now
-            </Link>
-          </Button>
           <WalletConnect />
         </div>
       </div>

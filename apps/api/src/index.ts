@@ -1,6 +1,6 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -11,8 +11,6 @@ import leaderboardRoutes from './routes/leaderboard';
 import rewardRoutes from './routes/rewards';
 import transactionRoutes from './routes/transactions';
 import adminRoutes from './routes/admin';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;

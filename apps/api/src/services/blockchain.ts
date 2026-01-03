@@ -23,23 +23,29 @@ const MARKETPLACE_ABI = [
   'event RedemptionVerified(address indexed user, string rewardId, string redemptionId, uint256 timestamp)',
 ];
 
+if (!process.env.RPC_URL) {
+  logger.error('RPC_URL is missing in environment variables');
+}
+
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+const wallet = process.env.PRIVATE_KEY 
+  ? new ethers.Wallet(process.env.PRIVATE_KEY, provider)
+  : ethers.Wallet.createRandom(provider); // Fallback to random wallet if key missing (read-only mode)
 
 const tokenContract = new ethers.Contract(
-  process.env.CONTRACT_ADDRESS!,
+  process.env.CONTRACT_ADDRESS || ethers.ZeroAddress,
   TOKEN_ABI,
   provider
 );
 
 const distributorContract = new ethers.Contract(
-  process.env.DISTRIBUTOR_ADDRESS!,
+  process.env.DISTRIBUTOR_ADDRESS || ethers.ZeroAddress,
   DISTRIBUTOR_ABI,
   wallet
 );
 
 const marketplaceContract = new ethers.Contract(
-  process.env.MARKETPLACE_ADDRESS!,
+  process.env.MARKETPLACE_ADDRESS || ethers.ZeroAddress,
   MARKETPLACE_ABI,
   provider
 );

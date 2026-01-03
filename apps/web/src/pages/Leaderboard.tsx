@@ -39,16 +39,16 @@ export default function Leaderboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data?.entries.map((entry) => (
-                  <TableRow key={entry.user.id}>
+                {data?.leaderboard?.map((entry: any) => (
+                  <TableRow key={entry.id}>
                     <TableCell className="font-medium">#{entry.rank}</TableCell>
                     <TableCell>
-                      {entry.user.name || truncateAddress(entry.user.walletAddress)}
+                      {entry.name || truncateAddress(entry.walletAddress)}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatTokenAmount(entry.totalTokens)} GDG
+                      {formatTokenAmount(entry.balance)} GDG
                     </TableCell>
-                    <TableCell className="text-right">{entry.totalActivities}</TableCell>
+                    <TableCell className="text-right">{entry.activityCount}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

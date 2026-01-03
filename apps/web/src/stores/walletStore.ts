@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { getConnectedAccount, getCurrentNetwork, CHAIN_ID } from '../lib/web3';
+import { getConnectedAccount, getCurrentNetwork, CHAIN_ID, setupMetaMaskListeners } from '../lib/web3';
+import { api } from '../lib/api';
 
 export interface User {
   id: string;
@@ -56,6 +57,17 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       const { connectWallet } = await import('../lib/web3');
       const address = await connectWallet();
       
+      // Authenticate with backend
+      try {
+        const authData = await api.connectWallet(address);
+        api.setToken(authData.token);
+        set({ user: authData.user });
+      } catch (authError) {
+        console.error('Backend authentication failed:', authError);
+        // We still allow wallet connection even if backend auth fails, 
+        // but user won't have profile/admin access
+      }
+
       set({
         address,
         isConnected: true,
@@ -66,8 +78,6 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       // Check network
       await get().checkNetwork();
 
-      // Retrieve user data from backend if needed
-      // This will be done in the component level with API call
     } catch (error: any) {
       console.error('Connect error:', error);
       set({
@@ -84,6 +94,10 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       set({ isConnecting: true });
       const { disconnectWallet } = await import('../lib/web3');
       await disconnectWallet();
+      
+      // Clear backend auth
+      api.clearToken();
+      
       get().reset();
       set({ isConnecting: false });
     } catch (error: any) {
@@ -148,14 +162,18 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
   // Setup event listeners
   setupListeners: () => {
     try {
-      const { setupMetaMaskListeners } = require('../lib/web3') as { setupMetaMaskListeners: any };
-      
       const handleAccountChange = (accounts: string[]) => {
         if (accounts.length === 0) {
           // User disconnected
-          get().reset();
+          get().disconnect();
         } else {
-          set({ address: accounts[0].toLowerCase() });
+          const newAddress = accounts[0].toLowerCase();
+          set({ address: newAddress });
+          // Re-authenticate with new address
+          api.connectWallet(newAddress).then(authData => {
+            api.setToken(authData.token);
+            set({ user: authData.user });
+          }).catch(console.error);
         }
       };
 
@@ -196,6 +214,15 @@ export const initializeWallet = async () => {
     if (account) {
       store.setAddress(account);
       
+      // Authenticate with backend on initialization
+      try {
+        const authData = await api.connectWallet(account);
+        api.setToken(authData.token);
+        store.setUser(authData.user);
+      } catch (authError) {
+        console.error('Backend authentication failed during init:', authError);
+      }
+
       const network = await getCurrentNetwork();
       if (network) {
         store.setChainId(network.chainId);

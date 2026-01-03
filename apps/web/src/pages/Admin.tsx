@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWalletStore } from '@/stores/walletStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,15 +7,32 @@ import { useToast } from '@/hooks/use-toast';
 import { Shield } from 'lucide-react';
 
 export default function Admin() {
-  const { user } = useWalletStore();
+  const { user, address } = useWalletStore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+  useEffect(() => {
+    console.log('Admin Page - User:', user);
+    console.log('Admin Page - Address:', address);
+  }, [user, address]);
+
+  if (!user) {
+     return (
+      <div className="text-center py-20">
+        <p className="text-xl">Access Denied</p>
+        <p className="text-muted-foreground">User not authenticated. Please connect wallet.</p>
+        <p className="text-xs text-gray-400 mt-2">Address: {address}</p>
+      </div>
+    );
+  }
+
+  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
     return (
       <div className="text-center py-20">
         <p className="text-xl">Access Denied</p>
         <p className="text-muted-foreground">You need admin privileges to access this page</p>
+        <p className="text-xs text-gray-400 mt-2">Current Role: {user.role}</p>
+        <p className="text-xs text-gray-400">User ID: {user.id}</p>
       </div>
     );
   }
