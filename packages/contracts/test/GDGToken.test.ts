@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
+import hre from 'hardhat';
+const { ethers } = hre;
 import { GDGToken, RewardDistributor } from '../typechain-types';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 
@@ -15,12 +16,12 @@ describe('GDG Token Rewards System', function () {
 
     // Deploy Token
     const GDGToken = await ethers.getContractFactory('GDGToken');
-    token = await GDGToken.deploy('GDG Token', 'GDG');
+    token = (await GDGToken.deploy('G-CORE Token', 'GCORE')) as unknown as GDGToken;
     await token.waitForDeployment();
 
     // Deploy Distributor
     const RewardDistributor = await ethers.getContractFactory('RewardDistributor');
-    distributor = await RewardDistributor.deploy(await token.getAddress());
+    distributor = (await RewardDistributor.deploy(await token.getAddress())) as unknown as RewardDistributor;
     await distributor.waitForDeployment();
 
     // Grant minter role to distributor
@@ -30,8 +31,8 @@ describe('GDG Token Rewards System', function () {
 
   describe('GDGToken', function () {
     it('Should have correct name and symbol', async function () {
-      expect(await token.name()).to.equal('GDG Token');
-      expect(await token.symbol()).to.equal('GDG');
+      expect(await token.name()).to.equal('G-CORE Token');
+      expect(await token.symbol()).to.equal('GCORE');
     });
 
     it('Should mint tokens by minter role', async function () {
