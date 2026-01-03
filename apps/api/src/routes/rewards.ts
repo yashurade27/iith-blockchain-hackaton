@@ -1,9 +1,9 @@
-import { Router } from 'express';
+import { Router, Response } from 'express';
 import { z } from 'zod';
-import { authenticate, AuthRequest } from '../middleware/auth';
-import prisma from '../utils/prisma';
-import { redeemTokens } from '../services/blockchain';
+import { AuthRequest, authenticate } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import prisma from '../utils/prisma';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
@@ -12,35 +12,94 @@ const redeemSchema = z.object({
   quantity: z.number().int().positive(),
 });
 
-router.get('/', authenticate, async (req: AuthRequest, res, next) => {
+/**
+ * GET /api/rewards
+ * List all available rewards
+ */
+router.get('/', async (req: AuthRequest, res: Response, next) => {
   try {
-    const { category, isActive = 'true' } = req.query;
+    const { category, isActive } = req.query;
 
     const where: any = {};
-    if (category) {
-      where.category = category;
+    if (isActive !== undefined) {
+      where.isActive = isActive === 'true';
     }
-    if (isActive === 'true') {
-      where.isActive = true;
+    if (category) {
+      where.category = String(category);
     }
 
     const rewards = await prisma.reward.findMany({
       where,
-      orderBy: { cost: 'asc' },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { redemptions: true },
+        },
+      },
     });
 
-    res.json({ rewards });
+    res.json({
+      success: true,
+      data: {
+        rewards: rewards.map((r) => ({
+          ...r,
+          redemptionCount: r._count.redemptions,
+        })),
+      },
+    });
   } catch (error) {
     next(error);
   }
 });
 
-router.post('/redeem', authenticate, async (req: AuthRequest, res, next) => {
+/**
+ * GET /api/rewards/:id
+ * Get reward details
+ */
+router.get('/:id', async (req: AuthRequest, res: Response, next) => {
   try {
-    const { rewardId, quantity } = redeemSchema.parse(req.body);
-    const userId = req.userId!;
+    const { id } = req.params;
 
-    // Get reward
+    const reward = await prisma.reward.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: { redemptions: true },
+        },
+      },
+    });
+
+    if (!reward) {
+      throw new AppError('Reward not found', 404);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        reward: {
+          ...reward,
+          redemptionCount: reward._count.redemptions,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/rewards/redeem
+ * Redeem reward with G-CORE tokens
+ */
+router.post('/redeem', authenticate, async (req: AuthRequest, res: Response, next) => {
+  try {
+    if (!req.user) {
+      throw new AppError('Authentication required', 401);
+    }
+
+    const { rewardId, quantity } = redeemSchema.parse(req.body);
+    logger.info(`Redemption: user=${req.user.id}, reward=${rewardId}, qty=${quantity}`);
+
     const reward = await prisma.reward.findUnique({
       where: { id: rewardId },
     });
@@ -54,47 +113,60 @@ router.post('/redeem', authenticate, async (req: AuthRequest, res, next) => {
     }
 
     if (reward.stock < quantity) {
-      throw new AppError('Insufficient stock', 400);
+      throw new AppError(`Insufficient stock. Available: ${reward.stock}`, 400);
     }
 
     const totalCost = reward.cost * quantity;
 
-    // Get user
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      throw new AppError('User not found', 404);
-    }
-
-    // Redeem tokens on blockchain
-    const txHash = await redeemTokens(user.walletAddress, rewardId, totalCost, quantity);
-
-    // Create redemption record
     const redemption = await prisma.redemption.create({
       data: {
-        userId,
-        rewardId,
+        userId: req.user.id,
+        rewardId: rewardId,
         quantity,
-        txHash,
-        status: 'PENDING',
       },
       include: {
+        user: true,
         reward: true,
       },
     });
 
-    // Update stock
     await prisma.reward.update({
       where: { id: rewardId },
-      data: { stock: { decrement: quantity } },
+      data: {
+        stock: {
+          decrement: quantity,
+        },
+      },
     });
 
-    res.json({ redemption, txHash });
+    await prisma.transaction.create({
+      data: {
+        userId: req.user.id,
+        amount: totalCost,
+        type: 'REDEEM',
+        description: `Redeemed ${quantity}x ${reward.name}`,
+        status: 'PENDING',
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Redemption created successfully',
+      data: {
+        redemption: {
+          id: redemption.id,
+          rewardId: reward.id,
+          rewardName: reward.name,
+          quantity,
+          totalCost,
+          status: redemption.status,
+          createdAt: redemption.createdAt,
+        },
+      },
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      next(new AppError('Invalid request data', 400));
+      next(new AppError('Invalid redemption data', 400));
     } else {
       next(error);
     }

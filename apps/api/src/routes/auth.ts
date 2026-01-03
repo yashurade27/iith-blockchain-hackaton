@@ -1,80 +1,68 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import jwt from 'jsonwebtoken';
-import prisma from '../utils/prisma';
+import { AuthRequest, authenticateWallet } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
 const connectWalletSchema = z.object({
-  walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
-  signature: z.string().optional(),
+  walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid Ethereum address'),
 });
 
-router.post('/connect', async (req, res, next) => {
+/**
+ * POST /api/auth/connect
+ * Connect wallet and receive JWT token
+ */
+router.post('/connect', async (req: Request, res: Response, next) => {
   try {
     const { walletAddress } = connectWalletSchema.parse(req.body);
+    logger.info(`Wallet connection attempt: ${walletAddress}`);
 
-    let user = await prisma.user.findUnique({
-      where: { walletAddress: walletAddress.toLowerCase() },
-    });
-
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          walletAddress: walletAddress.toLowerCase(),
-        },
-      });
-    }
-
-    const token = jwt.sign(
-      { userId: user.id, role: user.role },
-      process.env.JWT_SECRET!,
-      { expiresIn: '7d' }
-    );
+    const result = await authenticateWallet(walletAddress);
 
     res.json({
-      user: {
-        id: user.id,
-        walletAddress: user.walletAddress,
-        name: user.name,
-        email: user.email,
-        role: user.role,
+      success: true,
+      message: 'Wallet connected successfully',
+      data: {
+        user: {
+          id: result.user.id,
+          walletAddress: result.user.walletAddress,
+          name: result.user.name,
+          email: result.user.email,
+          role: result.user.role,
+        },
+        token: result.token,
       },
-      token,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      next(new AppError('Invalid wallet address', 400));
+      next(new AppError('Invalid wallet address format', 400));
     } else {
       next(error);
     }
   }
 });
 
-router.get('/me', async (req, res, next) => {
+/**
+ * GET /api/auth/me
+ * Get current authenticated user
+ */
+router.get('/me', authenticate, async (req: AuthRequest, res: Response, next) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      throw new AppError('No token provided', 401);
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-    });
-
-    if (!user) {
+    if (!req.user) {
       throw new AppError('User not found', 404);
     }
 
-    res.json({ user });
+    res.json({
+      success: true,
+      data: {
+        user: req.user,
+      },
+    });
   } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError) {
-      next(new AppError('Invalid token', 401));
-    } else {
-      next(error);
-    }
+    next(error);
   }
 });
 

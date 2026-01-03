@@ -1,30 +1,91 @@
-import { Router } from 'express';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { Router, Response } from 'express';
+import { z } from 'zod';
+import { AuthRequest, authenticate } from '../middleware/auth';
+import { AppError } from '../middleware/errorHandler';
 import prisma from '../utils/prisma';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
-router.get('/', authenticate, async (req: AuthRequest, res, next) => {
+/**
+ * GET /api/transactions
+ * Get current user's transaction history
+ */
+router.get('/', authenticate, async (req: AuthRequest, res: Response, next) => {
   try {
-    const userId = req.userId!;
-    const { page = '1', limit = '20' } = req.query;
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    if (!req.user) {
+      throw new AppError('Authentication required', 401);
+    }
 
-    const [transactions, total] = await Promise.all([
-      prisma.transaction.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: parseInt(limit as string),
-      }),
-      prisma.transaction.count({ where: { userId } }),
-    ]);
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+
+    logger.info(`Fetching transactions for user ${req.user.id}`);
+
+    const where: any = {
+      userId: req.user.id,
+    };
+
+    if (req.query.type) {
+      where.type = String(req.query.type);
+    }
+    if (req.query.status) {
+      where.status = String(req.query.status);
+    }
+
+    const transactions = await prisma.transaction.findMany({
+      where,
+      skip: offset,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const total = await prisma.transaction.count({ where });
 
     res.json({
-      transactions,
-      total,
-      page: parseInt(page as string),
-      limit: parseInt(limit as string),
+      success: true,
+      data: {
+        transactions,
+        pagination: {
+          total,
+          limit,
+          offset,
+          page: Math.floor(offset / limit) + 1,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/transactions/:id
+ * Get transaction details
+ */
+router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next) => {
+  try {
+    if (!req.user) {
+      throw new AppError('Authentication required', 401);
+    }
+
+    const { id } = req.params;
+
+    const transaction = await prisma.transaction.findUnique({
+      where: { id },
+    });
+
+    if (!transaction) {
+      throw new AppError('Transaction not found', 404);
+    }
+
+    if (transaction.userId !== req.user.id && req.user.role === 'USER') {
+      throw new AppError('Unauthorized', 403);
+    }
+
+    res.json({
+      success: true,
+      data: { transaction },
     });
   } catch (error) {
     next(error);

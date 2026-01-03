@@ -1,86 +1,85 @@
-import { Router } from 'express';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import prisma from '../utils/prisma';
+import { AppError } from '../middleware/errorHandler';
 import { getTokenBalance } from '../services/blockchain';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
-router.get('/', authenticate, async (req: AuthRequest, res, next) => {
+/**
+ * GET /api/leaderboard
+ * Get G-CORE leaderboard with rankings
+ */
+router.get('/', async (req: Request, res: Response, next) => {
   try {
-    const { timeframe = 'all', category = 'all', page = '1', limit = '10' } = req.query;
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
 
-    // Calculate date filter based on timeframe
-    let dateFilter = {};
-    if (timeframe === 'month') {
-      const monthAgo = new Date();
-      monthAgo.setMonth(monthAgo.getMonth() - 1);
-      dateFilter = { gte: monthAgo };
-    } else if (timeframe === 'week') {
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      dateFilter = { gte: weekAgo };
-    }
+    logger.info(`Fetching leaderboard: limit=${limit}, offset=${offset}`);
 
-    // Build activity filter
-    const activityFilter: any = {};
-    if (Object.keys(dateFilter).length > 0) {
-      activityFilter.verifiedAt = dateFilter;
-    }
-    if (category !== 'all') {
-      activityFilter.type = category;
-    }
-
-    // Get users with their activity points
     const users = await prisma.user.findMany({
-      include: {
-        activities: {
-          where: activityFilter,
-        },
+      skip: offset,
+      take: limit,
+      select: {
+        id: true,
+        walletAddress: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        transactions: true,
+        activities: true,
+        redemptions: true,
       },
     });
 
-    // Calculate total points and get balances
-    const leaderboardEntries = await Promise.all(
-      users.map(async (user) => {
-        const totalPoints = user.activities.reduce((sum, activity) => sum + activity.points, 0);
-        let balance = '0';
-        try {
-          const tokenBalance = await getTokenBalance(user.walletAddress);
-          balance = tokenBalance.formatted;
-        } catch (error) {
-          console.error(`Failed to get balance for ${user.walletAddress}`);
-        }
+    const totalUsers = await prisma.user.count();
 
-        return {
-          user: {
-            id: user.id,
-            walletAddress: user.walletAddress,
-            name: user.name,
-          },
-          totalTokens: parseFloat(balance),
-          totalActivities: user.activities.length,
-          totalPoints,
-        };
+    // Fetch blockchain balances for each user
+    const leaderboardData = await Promise.all(
+      users.map(async (user) => {
+        try {
+          const balance = await getTokenBalance(user.walletAddress);
+          return {
+            ...user,
+            balance: balance.formatted,
+            transactionCount: user.transactions.length,
+            activityCount: user.activities.length,
+            redemptionCount: user.redemptions.length,
+          };
+        } catch (error) {
+          logger.warn(`Failed to fetch balance for ${user.walletAddress}`);
+          return {
+            ...user,
+            balance: '0',
+            transactionCount: user.transactions.length,
+            activityCount: user.activities.length,
+            redemptionCount: user.redemptions.length,
+          };
+        }
       })
     );
 
-    // Sort by tokens and assign ranks
-    const sortedEntries = leaderboardEntries
-      .sort((a, b) => b.totalTokens - a.totalTokens)
-      .map((entry, index) => ({
-        rank: index + 1,
-        ...entry,
-      }));
+    // Sort by balance (descending)
+    const sorted = leaderboardData.sort((a, b) => parseFloat(b.balance) - parseFloat(a.balance));
 
-    // Paginate
-    const paginatedEntries = sortedEntries.slice(skip, skip + parseInt(limit as string));
+    // Add rank
+    const ranked = sorted.map((user, index) => ({
+      ...user,
+      rank: offset + index + 1,
+    }));
 
     res.json({
-      entries: paginatedEntries,
-      total: sortedEntries.length,
-      page: parseInt(page as string),
-      limit: parseInt(limit as string),
+      success: true,
+      data: {
+        leaderboard: ranked,
+        pagination: {
+          total: totalUsers,
+          limit,
+          offset,
+          page: Math.floor(offset / limit) + 1,
+        },
+      },
     });
   } catch (error) {
     next(error);
