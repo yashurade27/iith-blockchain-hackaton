@@ -179,3 +179,35 @@ export interface ApiError {
   code?: string;
   statusCode?: number;
 }
+
+// ========================================
+// G-CORE TOKEN CONFIGURATION
+// ========================================
+
+/**
+ * G-CORE Token Configuration
+ * Official reward token of GDG PCCOER
+ */
+export const TOKEN_CONFIG = {
+  name: 'G-CORE Token',
+  symbol: 'GCORE',
+  description: 'Reward token of GDG PCCOER',
+  organization: 'GDG PCCOER',
+  decimals: 18,
+} as const;
+
+/**
+ * Application Configuration with G-CORE Branding
+ */
+export const APP_CONFIG = {
+  appName: 'G-CORE',
+  appTitle: 'GDG PCCOER REWARDS',
+  description: 'Earn G-CORE tokens for participating in GDG PCCOER events and activities',
+  tagline: 'Powered by GDG PCCOER',
+  organization: 'GDG PCCOER',
+  leaderboardTitle: 'G-CORE LEADERBOARD',
+  leaderboardSubtitle: 'GDG PCCOER Chapter',
+  tokenDisplay: 'G-CORE',
+  headerTitle: 'G-CORE',
+  headerSubtitle: 'GDG PCCOER REWARDS',
+} as const;

@@ -1,18 +1,18 @@
 import { ethers } from 'hardhat';
 
 async function main() {
-  console.log('Deploying GDG Token Rewards contracts...');
+  console.log('🚀 Deploying G-CORE Token Rewards Contracts (GDG PCCOER)...');
 
   const [deployer] = await ethers.getSigners();
-  console.log('Deploying contracts with account:', deployer.address);
+  console.log('📝 Deploying with account:', deployer.address);
 
-  // Deploy GDGToken
-  console.log('\n1. Deploying GDGToken...');
+  // Deploy G-CORE Token
+  console.log('\n1. Deploying G-CORE Token...');
   const GDGToken = await ethers.getContractFactory('GDGToken');
-  const token = await GDGToken.deploy('GDG Token', 'GDG');
+  const token = await GDGToken.deploy('G-CORE Token', 'GCORE');
   await token.waitForDeployment();
   const tokenAddress = await token.getAddress();
-  console.log('GDGToken deployed to:', tokenAddress);
+  console.log('✅ G-CORE Token deployed to:', tokenAddress);
 
   // Deploy RewardDistributor
   console.log('\n2. Deploying RewardDistributor...');
@@ -38,13 +38,17 @@ async function main() {
   await grantMinterTx.wait();
   console.log('Granted MINTER_ROLE to RewardDistributor');
 
-  console.log('\n✅ Deployment completed!');
-  console.log('\nContract Addresses:');
-  console.log('===================');
-  console.log('GDGToken:', tokenAddress);
+  console.log('\n✅ G-CORE Token Deployment Completed!');
+  console.log('\n🪙 Contract Addresses:');
+  console.log('=======================');
+  console.log('G-CORE Token (GCORE):', tokenAddress);
   console.log('RewardDistributor:', distributorAddress);
   console.log('RewardMarketplace:', marketplaceAddress);
-  console.log('\nSave these addresses in your .env files!');
+  console.log('\n📋 Save these addresses in your .env files!');
+  console.log('\nToken Details:');
+  console.log('  Name: G-CORE Token');
+  console.log('  Symbol: GCORE');
+  console.log('  Powered by: GDG PCCOER');
 }
 
 main()
