@@ -34,10 +34,15 @@ async function main() {
   // Grant roles
   console.log('\n4. Granting roles...');
   const MINTER_ROLE = await token.MINTER_ROLE();
+  const BURNER_ROLE = await token.BURNER_ROLE();
   
   const grantMinterTx = await token.grantRole(MINTER_ROLE, distributorAddress);
   await grantMinterTx.wait();
   console.log('Granted MINTER_ROLE to RewardDistributor');
+
+  const grantBurnerTx = await token.grantRole(BURNER_ROLE, marketplaceAddress);
+  await grantBurnerTx.wait();
+  console.log('Granted BURNER_ROLE to RewardMarketplace');
 
   console.log('\n✅ G-CORE Token Deployment Completed!');
   console.log('\n🪙 Contract Addresses:');

@@ -13,6 +13,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 contract GDGToken is ERC20, ERC20Burnable, ERC20Pausable, AccessControl {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     event TokensMinted(address indexed to, uint256 amount, string reason);
     event TokensBurned(address indexed from, uint256 amount, string reason);
@@ -21,6 +22,7 @@ contract GDGToken is ERC20, ERC20Burnable, ERC20Pausable, AccessControl {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
+        _grantRole(BURNER_ROLE, msg.sender);
     }
 
     /**
@@ -51,7 +53,7 @@ contract GDGToken is ERC20, ERC20Burnable, ERC20Pausable, AccessControl {
         address from,
         uint256 amount,
         string memory reason
-    ) public {
+    ) public onlyRole(BURNER_ROLE) {
         _burn(from, amount);
         emit TokensBurned(from, amount, reason);
     }
