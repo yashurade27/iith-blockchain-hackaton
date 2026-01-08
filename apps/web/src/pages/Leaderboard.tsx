@@ -2,16 +2,17 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { formatTokenAmount, truncateAddress } from '@/lib/utils';
-import { Trophy, Activity, Medal, Crown, ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react';
+import { Trophy, Activity, Medal, Crown, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/ui/Pagination';
 
 export default function Leaderboard() {
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const [limit, setLimit] = useState(8);
 
   const { data: leaderboardData, isLoading: isLeaderboardLoading } = useQuery({
-    queryKey: ['leaderboard', page],
+    queryKey: ['leaderboard', page, limit],
     queryFn: () => api.getLeaderboard({ page, limit }),
   });
 
@@ -133,30 +134,18 @@ export default function Leaderboard() {
             </div>
 
             {/* Pagination Controls */}
-            <div className="flex items-center justify-between rounded-2xl border border-google-grey bg-white px-6 py-4">
-              <div className="text-sm text-gray-500">
-                Page <span className="font-bold text-google-grey">{page}</span> of <span className="font-bold text-google-grey">{totalPages}</span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1 || isLeaderboardLoading}
-                  className="h-9 w-9 p-0 rounded-full"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages || isLeaderboardLoading}
-                  className="h-9 w-9 p-0 rounded-full"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+            <div className="rounded-2xl border border-google-grey bg-white overflow-hidden">
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                limit={limit}
+                onLimitChange={(l) => {
+                  setLimit(l);
+                  setPage(1);
+                }}
+                totalItems={leaderboardData?.pagination?.total}
+              />
             </div>
           </div>
         </div>

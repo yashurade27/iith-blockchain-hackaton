@@ -5,18 +5,21 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
 import { getTokenBalance } from '@/lib/web3';
-import { User as UserIcon, Wallet, Shield, History, Package, Clock, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { User as UserIcon, Wallet, Shield, History, Package, Clock, ArrowUpRight, ArrowDownLeft, Copy, ExternalLink, Hash } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { Pagination } from '@/components/ui/Pagination';
 
 export default function Profile() {
   const { user, address, balance, setBalance, setUser } = useWalletStore();
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(8);
 
-  // Fetch detailed user data including transactions and redemptions
-  const { data: userDetails, isLoading } = useQuery({
+  // Fetch detailed user data for profile info
+  const { data: userDetails } = useQuery({
     queryKey: ['user', address],
     queryFn: async () => {
       if (!address) return null;
@@ -24,6 +27,17 @@ export default function Profile() {
       return response.user;
     },
     enabled: !!address,
+  });
+
+  // Fetch transactions with pagination
+  const { data: txData, isLoading: isTxLoading } = useQuery({
+    queryKey: ['transactions', address, page, limit],
+    queryFn: async () => {
+      if (!user) return null;
+      const response = await api.getTransactions({ page, limit });
+      return response;
+    },
+    enabled: !!user,
   });
 
   useEffect(() => {
@@ -73,6 +87,15 @@ export default function Profile() {
     }
   };
 
+  const copyToClipboard = (text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied!",
+      description: "Transaction hash copied to clipboard",
+    });
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -98,6 +121,8 @@ export default function Profile() {
       </div>
     );
   }
+
+  const totalPages = Math.ceil((txData?.total || 0) / limit);
 
   return (
     <div className="space-y-8 py-8">
@@ -205,43 +230,86 @@ export default function Profile() {
             </div>
             
             <div className="p-0">
-              {isLoading ? (
+              {isTxLoading ? (
                 <div className="p-8 text-center text-gray-500">Loading activity...</div>
-              ) : userDetails?.transactions?.length > 0 ? (
-                <div className="divide-y divide-gray-100">
-                  {userDetails.transactions.map((tx: any) => (
-                    <div key={tx.id} className="flex items-center justify-between p-6 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className={cn(
-                          "h-10 w-10 rounded-full flex items-center justify-center border",
-                          tx.type === 'EARN' 
-                            ? "bg-green-50 border-green-200 text-green-600" 
-                            : "bg-blue-50 border-blue-200 text-blue-600"
-                        )}>
-                          {tx.type === 'EARN' ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
+              ) : txData?.transactions?.length > 0 ? (
+                <>
+                  <div className="divide-y divide-gray-100">
+                    {txData.transactions.map((tx: any) => (
+                      <div key={tx.id} className="flex items-center justify-between p-6 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className={cn(
+                            "h-10 w-10 rounded-full flex items-center justify-center border",
+                            tx.type === 'EARN' 
+                              ? "bg-green-50 border-green-200 text-green-600" 
+                              : "bg-blue-50 border-blue-200 text-blue-600"
+                          )}>
+                            {tx.type === 'EARN' ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-900">{tx.description}</p>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                              <p className="text-xs text-gray-500 flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {formatDateTime(tx.createdAt)}
+                              </p>
+                              {tx.txHash && (
+                                <div className="flex items-center gap-1.5 p-1 px-2 rounded-lg bg-gray-100 border border-gray-200">
+                                  <span className="text-[10px] font-mono text-gray-500 truncate max-w-[120px]">
+                                    {tx.txHash.slice(0, 10)}...{tx.txHash.slice(-8)}
+                                  </span>
+                                  <button 
+                                    onClick={() => copyToClipboard(tx.txHash)}
+                                    className="text-gray-400 hover:text-google-blue transition-colors"
+                                    title="Copy TX Hash"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
+                                  <a 
+                                    href={`https://sepolia.etherscan.io/tx/${tx.txHash}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-gray-400 hover:text-google-blue transition-colors"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-gray-900">{tx.description}</p>
-                          <p className="text-xs text-gray-500 flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {formatDateTime(tx.createdAt)}
+                        <div className="text-right">
+                          <p className={cn(
+                            "font-bold",
+                            tx.type === 'EARN' ? "text-google-green" : "text-google-blue"
+                          )}>
+                            {tx.type === 'EARN' ? '+' : '-'}{tx.amount} G-CORE
+                          </p>
+                          <p className="text-xs text-gray-400 font-mono">
+                            {tx.status}
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className={cn(
-                          "font-bold",
-                          tx.type === 'EARN' ? "text-google-green" : "text-google-blue"
-                        )}>
-                          {tx.type === 'EARN' ? '+' : '-'}{tx.amount} G-CORE
-                        </p>
-                        <p className="text-xs text-gray-400 font-mono">
-                          {tx.status}
-                        </p>
-                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="border-t border-gray-100 bg-gray-50/30">
+                      <Pagination
+                        currentPage={page}
+                        totalPages={totalPages}
+                        onPageChange={setPage}
+                        limit={limit}
+                        onLimitChange={(l) => {
+                          setLimit(l);
+                          setPage(1);
+                        }}
+                        totalItems={txData.total}
+                      />
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               ) : (
                 <div className="p-12 text-center">
                   <div className="h-16 w-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-gray-200">
@@ -265,7 +333,7 @@ export default function Profile() {
             </div>
             
             <div className="p-0">
-              {isLoading ? (
+              {isTxLoading ? (
                 <div className="p-8 text-center text-gray-500">Loading items...</div>
               ) : userDetails?.redemptions?.length > 0 ? (
                 <div className="divide-y divide-gray-100">
@@ -281,19 +349,30 @@ export default function Profile() {
                             </div>
                           )}
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="font-bold text-gray-900 line-clamp-1">{redemption.reward?.name || 'Reward Item'}</p>
                           <p className="text-xs text-gray-500 mb-2">
                             Redeemed on {formatDate(redemption.createdAt)}
                           </p>
-                          <span className={cn(
-                            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border",
-                            redemption.status === 'COMPLETED' 
-                              ? "bg-green-50 text-green-700 border-green-200"
-                              : "bg-yellow-50 text-yellow-700 border-yellow-200"
-                          )}>
-                            {redemption.status}
-                          </span>
+                          <div className="flex items-center justify-between">
+                            <span className={cn(
+                              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border",
+                              redemption.status === 'COMPLETED' 
+                                ? "bg-green-50 text-green-700 border-green-200"
+                                : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                            )}>
+                              {redemption.status}
+                            </span>
+                            {redemption.txHash && (
+                              <button 
+                                onClick={() => copyToClipboard(redemption.txHash)}
+                                className="text-gray-400 hover:text-google-blue p-1 rounded-md hover:bg-gray-100 transition-all"
+                                title="Copy Transaction Hash"
+                              >
+                                <Hash className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

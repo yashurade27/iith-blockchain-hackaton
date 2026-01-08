@@ -2,13 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatTokenAmount } from '@/lib/utils';
-import { Gift, ShoppingBag, Search, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Gift, ShoppingBag, Search, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { ethers } from 'ethers';
 import { api } from '@/lib/api';
 import { useCartStore } from '@/stores/cartStore';
+import { Pagination } from '@/components/ui/Pagination';
 
 const CATEGORIES = ['All', 'Swag', 'Electronics', 'Books', 'Digital', 'Other'];
 
@@ -56,12 +56,11 @@ const THEMES = [
 ];
 
 export default function Rewards() {
-  const { toast } = useToast();
   const { addItem, toggleCart, totalItems } = useCartStore();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [page, setPage] = useState(1);
-  const limit = 9;
+  const [limit, setLimit] = useState(8);
 
   const { data, isLoading } = useQuery({
     queryKey: ['rewards', page, category, search],
@@ -297,28 +296,18 @@ export default function Rewards() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-4 mt-12">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="rounded-full h-10 w-10 border-google-grey"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-bold text-google-grey">
-                Page {page} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="rounded-full h-10 w-10 border-google-grey"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+            <div className="mt-12 bg-white rounded-3xl border border-google-grey overflow-hidden shadow-sm">
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                limit={limit}
+                onLimitChange={(l) => {
+                  setLimit(l);
+                  setPage(1);
+                }}
+                totalItems={data?.pagination?.total}
+              />
             </div>
           )}
         </>

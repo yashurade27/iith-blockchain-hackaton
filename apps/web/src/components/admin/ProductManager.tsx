@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Edit2, Package, Loader2, Trash2, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Plus, Edit2, Package, Loader2, Trash2, AlertTriangle } from 'lucide-react';
 import { formatTokenAmount } from '@/lib/utils';
-import { ethers } from 'ethers';
+import { Pagination } from '@/components/ui/Pagination';
 
 export function ProductManager() {
   const { toast } = useToast();
@@ -16,10 +16,10 @@ export function ProductManager() {
   const [deletingProduct, setDeletingProduct] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const [limit, setLimit] = useState(8);
 
   const { data, refetch, isLoading } = useQuery({
-    queryKey: ['admin-products', page],
+    queryKey: ['admin-products', page, limit],
     queryFn: async () => {
       // By default getRewards returns active only if active param is passed, 
       // but admin might want to see all? Usually admin manages inventory so seeing all is good.
@@ -182,30 +182,18 @@ export function ProductManager() {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-                <div className="mt-auto border-t border-gray-100 p-4 bg-gray-50/50 flex items-center justify-between">
-                    <span className="text-sm text-gray-500">
-                        Page {page} of {totalPages}
-                    </span>
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                            disabled={page === 1}
-                            className="h-8 w-8 p-0"
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                            disabled={page === totalPages}
-                            className="h-8 w-8 p-0"
-                        >
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
+                <div className="mt-auto border-t border-gray-100 bg-gray-50/50">
+                    <Pagination
+                        currentPage={page}
+                        totalPages={totalPages}
+                        onPageChange={setPage}
+                        limit={limit}
+                        onLimitChange={(l) => {
+                            setLimit(l);
+                            setPage(1);
+                        }}
+                        totalItems={data?.pagination?.total}
+                    />
                 </div>
             )}
         </>
