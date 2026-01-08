@@ -13,12 +13,22 @@ model User {
   email         String?        @unique
   name          String?
   role          Role           @default(USER)
+
+  // New user details
+  collegeEmail  String?        @unique
+  rollNo        String?
+  year          String?
+  branch        Branch?
+  codeforcesHandle String?
+  status        UserStatus     @default(PENDING)
+
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   activities    Activity[]
   notifications Notification[]
   redemptions   Redemption[]
   transactions  Transaction[]
+  eventParticipations EventParticipation[]
 
   @@index([walletAddress])
 }
@@ -135,4 +145,51 @@ enum RedemptionStatus {
   FULFILLED
   CANCELLED
   DELIVERED
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  rewardAmount Int
+  date        DateTime
+  totalSlots  Int      @default(100)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  
+  participations EventParticipation[]
+}
+
+model EventParticipation {
+  id        String   @id @default(uuid())
+  userId    String
+  eventId   String
+  status    ParticipationStatus @default(PENDING)
+  txHash    String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, eventId])
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ParticipationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Branch {
+  COMPUTER
+  IT
+  CIVIL
+  MECHANICAL
+  ENTC
 }

@@ -12,6 +12,7 @@ import rewardRoutes from './routes/rewards';
 import transactionRoutes from './routes/transactions';
 import adminRoutes from './routes/admin';
 import notificationRoutes from './routes/notifications';
+import eventRoutes from './routes/events';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -42,6 +43,7 @@ app.use('/api/rewards', rewardRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/events', eventRoutes);
 
 // Error handling
 app.use(errorHandler);

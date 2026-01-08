@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useWalletStore } from '@/stores/walletStore';
-import { Shield, AlertCircle, LayoutDashboard, Gift, Package } from 'lucide-react';
+import { Shield, AlertCircle, Gift, Package, Users, Calendar, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DistributeForm } from '@/components/admin/DistributeForm';
 import { ProductManager } from '@/components/admin/ProductManager';
 import { OrderManager } from '@/components/admin/OrderManager';
+import { UserManager } from '@/components/admin/UserManager';
+import { EventManager } from '@/components/admin/EventManager';
+import { ContestManager } from '@/components/admin/ContestManager';
 
-type AdminTab = 'distribute' | 'products' | 'orders';
+type AdminTab = 'products' | 'orders' | 'users' | 'events' | 'contests';
 
 export default function Admin() {
   const { user, address } = useWalletStore();
-  const [activeTab, setActiveTab] = useState<AdminTab>('distribute');
+  const [activeTab, setActiveTab] = useState<AdminTab>('products');
 
   useEffect(() => {
     console.log('Admin Page - User:', user);
@@ -48,12 +50,6 @@ export default function Admin() {
     );
   }
 
-  const tabs = [
-    { id: 'distribute', label: 'Distribute Tokens', icon: LayoutDashboard },
-    { id: 'products', label: 'Manage Products', icon: Gift },
-    { id: 'orders', label: 'Orders & Redemptions', icon: Package },
-  ];
-
   return (
     <div className="space-y-8 py-8">
       {/* Header Section */}
@@ -70,7 +66,7 @@ export default function Admin() {
               Admin Panel
             </h1>
             <p className="mt-2 text-lg text-gray-600">
-              Manage distributions, products, and orders.
+              Manage events, users, products, and orders.
             </p>
           </div>
         </div>
@@ -78,14 +74,20 @@ export default function Admin() {
 
       {/* Tabs */}
       <div className="flex space-x-2 overflow-x-auto pb-2 no-scrollbar">
-        {tabs.map((tab) => {
+        {[
+            { id: 'products', label: 'Manage Products', icon: Gift },
+            { id: 'orders', label: 'Orders & Redemptions', icon: Package },
+            { id: 'users', label: 'Users', icon: Users },
+            { id: 'events', label: 'Events', icon: Calendar },
+            { id: 'contests', label: 'Contests', icon: Trophy },
+        ].map((tab) => {
             const Icon = tab.icon;
             return (
                 <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as AdminTab)}
                     className={cn(
-                        "flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all border-2",
+                        "flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all border-2 whitespace-nowrap",
                         activeTab === tab.id
                             ? "bg-google-grey text-white border-google-grey shadow-md"
                             : "bg-white text-gray-500 border-transparent hover:bg-gray-50"
@@ -100,9 +102,11 @@ export default function Admin() {
 
       {/* Content Section */}
       <div className="min-h-[500px]">
-        {activeTab === 'distribute' && <DistributeForm />}
         {activeTab === 'products' && <ProductManager />}
         {activeTab === 'orders' && <OrderManager />}
+        {activeTab === 'users' && <UserManager />}
+        {activeTab === 'events' && <EventManager />}
+        {activeTab === 'contests' && <ContestManager />}
       </div>
     </div>
   );

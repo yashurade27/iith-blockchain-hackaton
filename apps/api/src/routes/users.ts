@@ -10,24 +10,11 @@ const router = Router();
 /**
  * PATCH /api/users/me
  * Update current user profile
+ * @deprecated - Name change is disabled as per requirements
  */
 router.patch('/me', authenticate, async (req: AuthRequest, res: Response, next) => {
   try {
-    if (!req.user) {
-      throw new AppError('Authentication required', 401);
-    }
-
-    const { name } = req.body;
-
-    const user = await prisma.user.update({
-      where: { id: req.user.id },
-      data: { name },
-    });
-
-    res.json({
-      success: true,
-      data: { user },
-    });
+    throw new AppError('Profile updates are restricted. Please contact admin.', 403);
   } catch (error) {
     next(error);
   }

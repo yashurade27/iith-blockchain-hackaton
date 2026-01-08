@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Event" ADD COLUMN     "totalSlots" INTEGER NOT NULL DEFAULT 100;

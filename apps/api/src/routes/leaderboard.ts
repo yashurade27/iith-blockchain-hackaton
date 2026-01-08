@@ -19,55 +19,66 @@ router.get('/', async (req: Request, res: Response, next) => {
     logger.info(`Fetching leaderboard: limit=${limit}, offset=${offset}`);
 
     const users = await prisma.user.findMany({
-      skip: offset,
-      take: limit,
       select: {
         id: true,
         walletAddress: true,
         name: true,
         role: true,
         createdAt: true,
-        transactions: true,
-        activities: true,
-        redemptions: true,
+        _count: {
+          select: {
+            transactions: true,
+            activities: true,
+            redemptions: true,
+          }
+        }
       },
     });
 
-    const totalUsers = await prisma.user.count();
+    const totalUsers = users.length;
 
     // Fetch blockchain balances for each user
-    const leaderboardData = await Promise.all(
+    const leaderboardWithBalances = await Promise.all(
       users.map(async (user) => {
         try {
           const balance = await getTokenBalance(user.walletAddress);
-          logger.info(`Fetched balance for ${user.walletAddress}: ${balance.formatted}`);
           return {
-            ...user,
+            id: user.id,
+            walletAddress: user.walletAddress,
+            name: user.name,
+            role: user.role,
+            createdAt: user.createdAt,
             balance: balance.formatted,
-            transactionCount: user.transactions.length,
-            activityCount: user.activities.length,
-            redemptionCount: user.redemptions.length,
+            transactionCount: user._count.transactions,
+            activityCount: user._count.activities,
+            redemptionCount: user._count.redemptions,
           };
         } catch (error) {
-          logger.warn(`Failed to fetch balance for ${user.walletAddress}`);
           return {
-            ...user,
+            id: user.id,
+            walletAddress: user.walletAddress,
+            name: user.name,
+            role: user.role,
+            createdAt: user.createdAt,
             balance: '0',
-            transactionCount: user.transactions.length,
-            activityCount: user.activities.length,
-            redemptionCount: user.redemptions.length,
+            transactionCount: user._count.transactions,
+            activityCount: user._count.activities,
+            redemptionCount: user._count.redemptions,
           };
         }
       })
     );
 
-    // Sort by balance (descending)
-    const sorted = leaderboardData.sort((a, b) => parseFloat(b.balance) - parseFloat(a.balance));
+    // Sort all users by balance (descending)
+    const sorted = leaderboardWithBalances.sort((a, b) => parseFloat(b.balance) - parseFloat(a.balance));
 
-    // Add rank
-    const ranked = sorted.map((user, index) => ({
+    // Apply pagination AFTER sorting
+    const paginated = sorted.slice(offset, offset + limit);
+
+    // Add rank based on full sorted list
+    const ranked = paginated.map((user) => ({
       ...user,
-      rank: offset + index + 1,
+      rank: sorted.findIndex(u => u.id === user.id) + 1,
     }));
 
     res.json({

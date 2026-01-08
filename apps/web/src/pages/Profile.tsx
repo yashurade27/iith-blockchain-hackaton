@@ -156,7 +156,7 @@ export default function Profile() {
             </div>
             
             <div className="p-8 space-y-8">
-              {/* Display Name */}
+              {/* Display Name - Read Only */}
               <div className="space-y-3">
                 <label className="text-sm font-bold text-google-grey uppercase tracking-wider">
                   Display Name
@@ -164,24 +164,42 @@ export default function Profile() {
                 <div className="flex gap-3">
                   <Input 
                     value={name} 
-                    onChange={(e) => setName(e.target.value)} 
-                    placeholder="Enter your name"
-                    className="max-w-md h-11 rounded-xl border-gray-200 focus:border-google-blue focus:ring-google-blue"
+                    disabled
+                    className="max-w-md h-11 rounded-xl border-gray-200 bg-gray-50 text-gray-500"
                   />
-                  <Button 
-                    onClick={handleUpdateProfile} 
-                    disabled={isUpdating}
-                    className="h-11 rounded-xl bg-google-blue hover:bg-google-blue/90 text-white font-medium px-6"
-                  >
-                    {isUpdating ? 'Saving...' : 'Save Changes'}
-                  </Button>
                 </div>
-                <p className="text-sm text-gray-500">
-                  This name will be displayed on the leaderboard and live ticker.
-                </p>
+                {user.status && (
+                    <div className="mt-2">
+                        <span className={cn(
+                            "inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border",
+                            user.status === 'APPROVED' ? "bg-green-100 text-green-800 border-green-200" : 
+                            user.status === 'REJECTED' ? "bg-red-100 text-red-800 border-red-200" :
+                            "bg-yellow-100 text-yellow-800 border-yellow-200"
+                        )}>
+                            Status: {user.status}
+                        </span>
+                    </div>
+                )}
               </div>
 
               <div className="grid gap-8 md:grid-cols-2">
+                {/* Details */}
+                {(user as any).details && (
+                    <div className="col-span-2 grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase">Roll No</p>
+                            <p className="font-medium">{(user as any).details.rollNo || '-'}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase">Year / Branch</p>
+                            <p className="font-medium">{(user as any).details.year || '-'} / {(user as any).details.branch || '-'}</p>
+                        </div>
+                         <div className="col-span-2">
+                            <p className="text-xs text-gray-500 uppercase">Codeforces</p>
+                            <p className="font-medium">{(user as any).details.codeforcesHandle || 'Not linked'}</p>
+                        </div>
+                    </div>
+                )}
                 {/* Wallet Address */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm font-bold text-google-grey uppercase tracking-wider">

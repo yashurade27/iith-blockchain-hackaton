@@ -508,4 +508,319 @@ router.patch('/redemptions/:id', async (req: AuthRequest, res: Response, next) =
   }
 });
 
+import { checkContestParticipation } from '../services/codeforces';
+
+// ... existing code ...
+
+const eventSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().min(1),
+  rewardAmount: z.number().positive(),
+  totalSlots: z.number().int().positive().optional(),
+  date: z.string().transform(str => new Date(str)),
+  isActive: z.boolean().optional(),
+});
+
+/**
+ * GET /api/admin/users
+ * List all users with optional status filter
+ */
+router.get('/users', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { status } = req.query;
+    const where: any = {};
+    if (status) {
+      where.status = String(status);
+    }
+    
+    const users = await prisma.user.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ success: true, data: { users } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/admin/users/pending
+ * List all pending users
+ */
+router.get('/users/pending', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: { status: 'PENDING' },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ success: true, data: { users } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/admin/users/:id/approve
+ * Approve or Reject a user
+ */
+router.post('/users/:id/approve', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { id } = req.params;
+    const { action } = z.object({ action: z.enum(['APPROVE', 'REJECT']) }).parse(req.body);
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED' },
+    });
+
+    // Notify user about approval/rejection
+    try {
+      await prisma.notification.create({
+        data: {
+          userId: user.id,
+          title: `Account ${action === 'APPROVE' ? 'Approved' : 'Rejected'}`,
+          message: action === 'APPROVE' 
+            ? 'Congratulations! Your account has been approved. You can now earn and redeem G-CORE points.'
+            : 'We regret to inform you that your account registration has been rejected. Please contact an admin for details.',
+          type: action === 'APPROVE' ? 'SUCCESS' : 'ERROR',
+          link: '/profile'
+        }
+      });
+    } catch (notifyError) {
+      logger.error(`Failed to notify user ${id} about account ${action}:`, notifyError);
+    }
+
+    res.json({ success: true, message: `User ${action}D successfully`, data: { user } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/admin/events
+ * Create a new event
+ */
+router.post('/events', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const data = eventSchema.parse(req.body);
+    const event = await prisma.event.create({ data });
+    res.json({ success: true, data: { event } });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      next(new AppError('Invalid event data', 400));
+    } else {
+      next(error);
+    }
+  }
+});
+
+/**
+ * GET /api/admin/events
+ * List all events
+ */
+router.get('/events', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const events = await prisma.event.findMany({
+      orderBy: { date: 'desc' },
+      include: {
+        _count: { select: { participations: true } }
+      }
+    });
+    res.json({ success: true, data: { events } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PATCH /api/admin/events/:id
+ * Update an event
+ */
+router.patch('/events/:id', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { id } = req.params;
+    const data = eventSchema.partial().parse(req.body);
+    
+    const event = await prisma.event.update({
+      where: { id },
+      data
+    });
+    
+    res.json({ success: true, data: { event } });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      next(new AppError('Invalid event data', 400));
+    } else {
+      next(error);
+    }
+  }
+});
+
+/**
+ * GET /api/admin/events/:id/participants
+ * List participants for an event
+ */
+router.get('/events/:id/participants', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { id } = req.params;
+    const participations = await prisma.eventParticipation.findMany({
+      where: { eventId: id },
+      include: { user: true },
+    });
+    res.json({ success: true, data: { participations } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/admin/events/:id/distribute
+ * Reward selected participants for an event
+ */
+router.post('/events/:id/distribute', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { id } = req.params;
+    const { userIds } = z.object({ userIds: z.array(z.string()) }).parse(req.body);
+    
+    if (!req.user) throw new AppError("Auth required", 401);
+
+    const event = await prisma.event.findUnique({ where: { id } });
+    if (!event) throw new AppError("Event not found", 404);
+
+    const results = [];
+    
+    for (const userId of userIds) {
+      try {
+        const participation = await prisma.eventParticipation.findUnique({
+             where: { userId_eventId: { userId, eventId: id } }
+        });
+
+        if (participation && participation.status === 'APPROVED') {
+             continue; // Already approved/paid
+        }
+        
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) continue;
+
+        // Distribute tokens
+        const txHash = await distributeTokens(
+          user.walletAddress,
+          event.rewardAmount,
+          'EVENT_ATTENDANCE',
+          `Event: ${event.title}`
+        );
+
+        // Update participation status
+        await prisma.eventParticipation.upsert({
+            where: { userId_eventId: { userId, eventId: id } },
+            create: {
+                userId,
+                eventId: id,
+                status: 'APPROVED',
+                txHash
+            },
+            update: {
+                status: 'APPROVED',
+                txHash
+            }
+        });
+
+        // Add Transaction record
+        await prisma.transaction.create({
+            data: {
+                userId,
+                amount: event.rewardAmount,
+                type: 'EARN',
+                description: `Event: ${event.title}`,
+                txHash,
+                status: 'COMPLETED'
+            }
+        });
+
+        // Add Activity record
+        await prisma.activity.create({
+          data: {
+            userId,
+            type: 'EVENT_ATTENDANCE',
+            points: event.rewardAmount,
+            verifiedAt: new Date(),
+            metadata: {
+              eventId: event.id,
+              eventTitle: event.title,
+              distributedBy: req.user.id,
+              txHash
+            }
+          }
+        });
+
+        // Create notification for user
+        try {
+            await prisma.notification.create({
+                data: {
+                    userId,
+                    title: 'Reward Received',
+                    message: `You've received ${event.rewardAmount} G-CORE tokens for participating in ${event.title}!`,
+                    type: 'SUCCESS',
+                    link: '/profile'
+                }
+            });
+        } catch (notifierError) {
+            logger.error(`Failed to notify user ${userId} about event reward`, notifierError);
+        }
+
+        results.push({ userId, status: 'SUCCESS', txHash });
+      } catch (e: any) {
+        logger.error(`Event distribution failed for user ${userId}`, e);
+        results.push({ userId, status: 'FAILED', error: e.message });
+      }
+    }
+
+    res.json({ success: true, data: { results } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+/**
+ * POST /api/admin/contests/check
+ * Check contest participation for users
+ */
+router.post('/contests/check', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { contestId, rewardAmount } = z.object({ 
+        contestId: z.number(), 
+        rewardAmount: z.number().positive() 
+    }).parse(req.body);
+
+    // Get all users with codeforces handle
+    const users = await prisma.user.findMany({
+        where: { codeforcesHandle: { not: null } }
+    });
+
+    const results = [];
+
+    for (const user of users) {
+        if (!user.codeforcesHandle) continue;
+        
+        const hasParticipated = await checkContestParticipation(user.codeforcesHandle, contestId);
+        
+        results.push({
+            user: {
+                id: user.id, 
+                name: user.name, 
+                handle: user.codeforcesHandle,
+                walletAddress: user.walletAddress
+            },
+            hasParticipated
+        });
+    }
+
+    res.json({ success: true, data: { results, contestId, rewardAmount } });
+
+  } catch (error) {
+      next(error);
+  }
+});
+
 export default router;

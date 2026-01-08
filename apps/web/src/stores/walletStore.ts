@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { getConnectedAccount, getCurrentNetwork, CHAIN_ID, setupMetaMaskListeners } from '../lib/web3';
 import { api } from '../lib/api';
+import { useUiStore } from './uiStore';
 
 export interface User {
   id: string;
@@ -59,20 +60,24 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       
       // Authenticate with backend
       try {
-        const authData = await api.connectWallet(address);
+        const authData = await api.login(address); // Using login instead of connectWallet
         api.setToken(authData.token);
         set({ user: authData.user });
-      } catch (authError) {
-        console.error('Backend authentication failed:', authError);
-        // We still allow wallet connection even if backend auth fails, 
-        // but user won't have profile/admin access
+      } catch (authError: any) {
+        if (authError.status === 404) {
+           console.log("User not found, triggering registration flow");
+           const { setShowRegistrationModal } = useUiStore.getState();
+           setShowRegistrationModal(true, address);
+        } else {
+            console.error('Backend authentication failed:', authError);
+            set({ error: authError.message });
+        }
       }
 
       set({
         address,
         isConnected: true,
         isConnecting: false,
-        error: null,
       });
 
       // Check network
@@ -84,7 +89,7 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
         error: error.message || 'Failed to connect wallet',
         isConnecting: false,
       });
-      throw error;
+      // Do not throw here to allow UI to remain "connected" wallet-wise even if not logged in
     }
   },
 
@@ -216,11 +221,17 @@ export const initializeWallet = async () => {
       
       // Authenticate with backend on initialization
       try {
-        const authData = await api.connectWallet(account);
+        const authData = await api.login(account);
         api.setToken(authData.token);
         store.setUser(authData.user);
-      } catch (authError) {
-        console.error('Backend authentication failed during init:', authError);
+      } catch (authError: any) {
+        if (authError.status === 404) {
+           console.log("User not found on init, triggering registration flow");
+           const { setShowRegistrationModal } = useUiStore.getState();
+           setShowRegistrationModal(true, account);
+        } else {
+            console.error('Backend authentication failed during init:', authError);
+        }
       }
 
       const network = await getCurrentNetwork();

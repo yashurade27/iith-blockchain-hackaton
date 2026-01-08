@@ -60,6 +60,7 @@ export const verifyToken = (token: string): JWTPayload => {
 
 /**
  * Find or create user by wallet address
+ * @deprecated Use specific findUser or registerUser functions in auth controller
  */
 export const findOrCreateUser = async (walletAddress: string) => {
   try {
@@ -78,6 +79,7 @@ export const findOrCreateUser = async (walletAddress: string) => {
         data: {
           walletAddress: normalizedAddress,
           role: isAdmin ? 'ADMIN' : 'USER',
+          status: isAdmin ? 'APPROVED' : 'PENDING', // Admin is auto-approved
         },
       });
 

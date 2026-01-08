@@ -44,11 +44,37 @@ class ApiClient {
   }
 
   // Auth
-  async connectWallet(walletAddress: string) {
-    return this.request<{ user: any; token: string }>('/auth/connect', {
+  async login(walletAddress: string) {
+    // Return full response object to handle 404
+    const response = await fetch(`${this.baseUrl}/auth/login`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ walletAddress }),
     });
+
+    if (response.status === 404) {
+      throw { status: 404, message: 'User not registered' };
+    }
+
+    if (!response.ok) {
+       const error = await response.json().catch(() => ({}));
+       throw new Error(error.message || `HTTP ${response.status}`);
+    }
+
+    const json = await response.json();
+    return json.data;
+  }
+
+  async register(data: any) {
+    return this.request<{ user: any; token: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async connectWallet(walletAddress: string) {
+    // Deprecated, mapped to login
+    return this.login(walletAddress);
   }
 
   async getMe() {
@@ -265,6 +291,71 @@ class ApiClient {
     return this.request<{ message: string }>('/notifications/read-all', {
       method: 'POST',
     });
+  }
+
+  // Admin - User Management
+  async getPendingUsers() {
+    return this.request<{ users: any[] }>('/admin/users/pending');
+  }
+
+  async getUsers(status?: string) {
+    const query = status ? `?status=${status}` : '';
+    return this.request<{ users: any[] }>(`/admin/users${query}`);
+  }
+
+  async approveUser(userId: string, action: 'APPROVE' | 'REJECT') {
+    return this.request<{ user: any; message: string }>(`/admin/users/${userId}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({ action })
+    });
+  }
+
+  // Events
+  async getEvents() {
+    return this.request<{ events: any[] }>('/events'); // User facing
+  }
+
+  async getAdminEvents() {
+    return this.request<{ events: any[] }>('/admin/events'); // Admin facing (includes stats)
+  }
+
+  async createEvent(data: any) {
+    return this.request<{ event: any }>('/admin/events', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    });
+  }
+
+  async updateEvent(id: string, data: any) {
+    return this.request<{ event: any }>(`/admin/events/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data)
+    });
+  }
+
+  async joinEvent(eventId: string) {
+    return this.request<{ participation: any }>('/events/' + eventId + '/join', {
+        method: 'POST'
+    });
+  }
+
+  async getEventParticipants(eventId: string) {
+    return this.request<{ participations: any[] }>('/admin/events/' + eventId + '/participants');
+  }
+
+  async distributeEventRewards(eventId: string, userIds: string[]) {
+    return this.request<{ results: any[] }>('/admin/events/' + eventId + '/distribute', {
+        method: 'POST',
+        body: JSON.stringify({ userIds })
+    });
+  }
+
+  // Contests
+  async checkContestParticipation(contestId: number, rewardAmount: number) {
+      return this.request<{ results: any[], contestId: number, rewardAmount: number }>('/admin/contests/check', {
+          method: 'POST',
+          body: JSON.stringify({ contestId, rewardAmount })
+      });
   }
 }
 

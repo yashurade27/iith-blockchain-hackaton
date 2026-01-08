@@ -35,6 +35,7 @@ export default function Navbar() {
 
   const navItems = [
     { path: '/', label: 'Home' },
+    { path: '/events', label: 'Events' },
     { path: '/leaderboard', label: 'Leaderboard' },
     { path: '/rewards', label: 'Rewards' },
     { path: '/profile', label: 'Profile' },
