@@ -2,10 +2,9 @@
   "name": "@gdg-token-rewards/api",
   "version": "1.0.0",
   "main": "dist/index.js",
-  "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "prisma generate && tsc && ls -R dist",
+    "build": "prisma generate && tsc",
     "start": "node dist/index.js",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
