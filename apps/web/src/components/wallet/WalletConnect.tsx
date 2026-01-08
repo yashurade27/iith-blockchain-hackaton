@@ -13,7 +13,6 @@ export default function WalletConnect() {
     isCorrectNetwork,
     connect,
     disconnect,
-    balance,
     setBalance,
   } = useWalletStore();
 

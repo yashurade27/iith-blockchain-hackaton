@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { useUiStore } from './uiStore';
 
 export interface User {
+  status: any;
   id: string;
   walletAddress: string;
   name?: string;

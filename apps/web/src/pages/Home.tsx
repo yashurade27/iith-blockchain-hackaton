@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useWalletStore } from '@/stores/walletStore';
 import { formatTokenAmount } from '@/lib/utils';
-import { ArrowRight, Trophy, Gift, Code2, Terminal, ShoppingBag } from 'lucide-react';
+import { ArrowRight, Gift, Code2, Terminal, ShoppingBag } from 'lucide-react';
 
 export default function Home() {
   const { isConnected, balance } = useWalletStore();

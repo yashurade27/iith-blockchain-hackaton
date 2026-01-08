@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CustomTabs } from '@/components/ui/custom-tabs';
 import { useWalletStore } from '@/stores/walletStore';
-import { Shield, AlertCircle, Gift, Package, Users, Calendar, Trophy } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Shield, AlertCircle } from 'lucide-react';
 import { ProductManager } from '@/components/admin/ProductManager';
 import { OrderManager } from '@/components/admin/OrderManager';
 import { UserManager } from '@/components/admin/UserManager';
@@ -12,7 +11,7 @@ import { ContestManager } from '@/components/admin/ContestManager';
 type AdminTab = 'products' | 'orders' | 'users' | 'events' | 'contests';
 
 export default function Admin() {
-  const { user, address } = useWalletStore();
+  const { user } = useWalletStore();
   const [activeTab, setActiveTab] = useState<AdminTab>('products');
 
   useEffect(() => {

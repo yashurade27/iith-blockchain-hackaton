@@ -1,8 +1,7 @@
 import { X, Trash2, ShoppingBag, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCartStore } from '@/stores/cartStore';
-import { formatTokenAmount, cn } from '@/lib/utils';
-import { ethers } from 'ethers';
+import { formatTokenAmount } from '@/lib/utils';
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';

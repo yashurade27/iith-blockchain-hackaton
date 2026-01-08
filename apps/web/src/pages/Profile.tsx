@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useWalletStore } from '@/stores/walletStore';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
 import { getTokenBalance } from '@/lib/web3';
@@ -122,7 +122,7 @@ export default function Profile() {
     );
   }
 
-  const totalPages = Math.ceil((txData?.total || 0) / limit);
+  const totalPages = txData ? Math.ceil(txData.total / limit) : 0;
 
   return (
     <div className="space-y-8 py-8">
@@ -164,17 +164,24 @@ export default function Profile() {
                 <div className="flex gap-3">
                   <Input 
                     value={name} 
-                    disabled
-                    className="max-w-md h-11 rounded-xl border-gray-200 bg-gray-50 text-gray-500"
+                    onChange={(e) => setName(e.target.value)}
+                    className="max-w-md h-11 rounded-xl border-google-grey focus:ring-google-blue bg-white"
                   />
+                  <Button 
+                    onClick={handleUpdateProfile}
+                    disabled={isUpdating || !name.trim() || name === user.name}
+                    className="bg-google-blue text-white rounded-xl h-11 px-6 font-bold shadow-[4px_4px_0px_0px_rgba(32,33,36,1)] hover:shadow-none hover:translate-y-0.5 transition-all"
+                  >
+                    {isUpdating ? 'Updating...' : 'Update'}
+                  </Button>
                 </div>
                 {user.status && (
                     <div className="mt-2">
                         <span className={cn(
                             "inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border",
-                            user.status === 'APPROVED' ? "bg-green-100 text-green-800 border-green-200" : 
-                            user.status === 'REJECTED' ? "bg-red-100 text-red-800 border-red-200" :
-                            "bg-yellow-100 text-yellow-800 border-yellow-200"
+                            user.status === 'APPROVED' ? "bg-pastel-green text-google-grey border-google-grey" : 
+                            user.status === 'REJECTED' ? "bg-pastel-red text-google-grey border-google-grey" :
+                            "bg-pastel-yellow text-google-grey border-google-grey"
                         )}>
                             Status: {user.status}
                         </span>
@@ -184,19 +191,35 @@ export default function Profile() {
 
               <div className="grid gap-8 md:grid-cols-2">
                 {/* Details */}
-                {(user as any).details && (
-                    <div className="col-span-2 grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                {userDetails && (
+                    <div className="col-span-2 grid grid-cols-2 gap-4 bg-gray-50 p-6 rounded-[1.5rem] border border-google-grey/10 shadow-inner">
                         <div>
-                            <p className="text-xs text-gray-500 uppercase">Roll No</p>
-                            <p className="font-medium">{(user as any).details.rollNo || '-'}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 ml-1">Roll No</p>
+                            <div className="bg-white px-4 py-2 rounded-xl border border-google-grey/5 font-bold text-google-grey">
+                                {userDetails.rollNo || '-'}
+                            </div>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-500 uppercase">Year / Branch</p>
-                            <p className="font-medium">{(user as any).details.year || '-'} / {(user as any).details.branch || '-'}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 ml-1">Year / Branch</p>
+                            <div className="bg-white px-4 py-2 rounded-xl border border-google-grey/5 font-bold text-google-grey">
+                                {userDetails.year || '-'} / {userDetails.branch || '-'}
+                            </div>
                         </div>
                          <div className="col-span-2">
-                            <p className="text-xs text-gray-500 uppercase">Codeforces</p>
-                            <p className="font-medium">{(user as any).details.codeforcesHandle || 'Not linked'}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1 ml-1">Codeforces Handle</p>
+                            <div className="bg-white px-4 py-2 rounded-xl border border-google-grey/5 font-bold flex items-center justify-between group">
+                                <span className="text-google-blue">{userDetails.codeforcesHandle || 'Not linked'}</span>
+                                {userDetails.codeforcesHandle && (
+                                    <a 
+                                        href={`https://codeforces.com/profile/${userDetails.codeforcesHandle}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-gray-300 hover:text-google-blue transition-colors"
+                                    >
+                                        <ExternalLink className="h-4 w-4" />
+                                    </a>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -250,7 +273,7 @@ export default function Profile() {
             <div className="p-0">
               {isTxLoading ? (
                 <div className="p-8 text-center text-gray-500">Loading activity...</div>
-              ) : txData?.transactions?.length > 0 ? (
+              ) : txData?.transactions && txData.transactions.length > 0 ? (
                 <>
                   <div className="divide-y divide-gray-100">
                     {txData.transactions.map((tx: any) => (
@@ -323,7 +346,7 @@ export default function Profile() {
                           setLimit(l);
                           setPage(1);
                         }}
-                        totalItems={txData.total}
+                        totalItems={txData?.total || 0}
                       />
                     </div>
                   )}
@@ -353,7 +376,7 @@ export default function Profile() {
             <div className="p-0">
               {isTxLoading ? (
                 <div className="p-8 text-center text-gray-500">Loading items...</div>
-              ) : userDetails?.redemptions?.length > 0 ? (
+              ) : userDetails?.redemptions && userDetails.redemptions.length > 0 ? (
                 <div className="divide-y divide-gray-100">
                   {userDetails.redemptions.map((redemption: any) => (
                     <div key={redemption.id} className="p-6 hover:bg-gray-50 transition-colors">

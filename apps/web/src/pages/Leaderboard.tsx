@@ -4,7 +4,6 @@ import { api } from '@/lib/api';
 import { formatTokenAmount, truncateAddress } from '@/lib/utils';
 import { Trophy, Activity, Medal, Crown, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/Pagination';
 
 export default function Leaderboard() {
