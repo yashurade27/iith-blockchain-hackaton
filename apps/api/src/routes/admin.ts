@@ -805,18 +805,20 @@ router.post('/contests/check', async (req: AuthRequest, res: Response, next) => 
         
         const hasParticipated = await checkContestParticipation(user.codeforcesHandle, contestId);
         
+        // Map to format expected by frontend
         results.push({
-            user: {
-                id: user.id, 
-                name: user.name, 
-                handle: user.codeforcesHandle,
-                walletAddress: user.walletAddress
-            },
-            hasParticipated
+            userName: user.name || 'Anonymous',
+            handle: user.codeforcesHandle,
+            rank: null, // Rank requires a different API call, keeping it simple for now
+            processed: hasParticipated, // In this context, processed means they qualifies
+            walletAddress: user.walletAddress
         });
     }
 
-    res.json({ success: true, data: { results, contestId, rewardAmount } });
+    res.json({ 
+        success: true, 
+        data: { results, contestId, rewardAmount } 
+    });
 
   } catch (error) {
       next(error);
