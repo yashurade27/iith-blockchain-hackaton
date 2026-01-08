@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { CustomTabs } from '@/components/ui/custom-tabs';
 import { useWalletStore } from '@/stores/walletStore';
 import { Shield, AlertCircle, Gift, Package, Users, Calendar, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -73,31 +74,19 @@ export default function Admin() {
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-2 overflow-x-auto pb-2 no-scrollbar">
-        {[
-            { id: 'products', label: 'Manage Products', icon: Gift },
-            { id: 'orders', label: 'Orders & Redemptions', icon: Package },
-            { id: 'users', label: 'Users', icon: Users },
-            { id: 'events', label: 'Events', icon: Calendar },
-            { id: 'contests', label: 'Contests', icon: Trophy },
-        ].map((tab) => {
-            const Icon = tab.icon;
-            return (
-                <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as AdminTab)}
-                    className={cn(
-                        "flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all border-2 whitespace-nowrap",
-                        activeTab === tab.id
-                            ? "bg-google-grey text-white border-google-grey shadow-md"
-                            : "bg-white text-gray-500 border-transparent hover:bg-gray-50"
-                    )}
-                >
-                    <Icon className="h-4 w-4" />
-                    {tab.label}
-                </button>
-            )
-        })}
+      <div className="overflow-x-auto pb-4 no-scrollbar">
+        <CustomTabs 
+            tabs={[
+                { id: 'products', label: 'Manage Products' },
+                { id: 'orders', label: 'Orders & Redemptions' },
+                { id: 'users', label: 'Users' },
+                { id: 'events', label: 'Events' },
+                { id: 'contests', label: 'Contests' },
+            ]}
+            activeTab={activeTab}
+            onChange={(id) => setActiveTab(id as AdminTab)}
+            className="bg-white border border-gray-200 shadow-sm"
+        />
       </div>
 
       {/* Content Section */}

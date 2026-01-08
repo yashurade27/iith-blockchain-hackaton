@@ -368,7 +368,14 @@ export default function Profile() {
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-gray-900 line-clamp-1">{redemption.reward?.name || 'Reward Item'}</p>
+                          <p className="font-bold text-gray-900 line-clamp-1">
+                            {redemption.reward?.name || 'Reward Item'}
+                            {redemption.quantity > 1 && (
+                                <span className="ml-2 inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                                    x{redemption.quantity}
+                                </span>
+                            )}
+                          </p>
                           <p className="text-xs text-gray-500 mb-2">
                             Redeemed on {formatDate(redemption.createdAt)}
                           </p>

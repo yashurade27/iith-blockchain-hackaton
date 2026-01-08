@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { CustomTabs } from '@/components/ui/custom-tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -268,26 +269,15 @@ export function EventManager() {
         </div>
         
         <div className="flex gap-4">
-            <div className="flex bg-gray-100 p-1 rounded-2xl border border-gray-200">
-                <button 
-                    onClick={() => setActiveTab('current')}
-                    className={cn(
-                        "px-6 py-2 rounded-xl text-sm font-bold transition-all",
-                        activeTab === 'current' ? "bg-white text-google-grey shadow-sm" : "text-gray-500 hover:text-gray-700"
-                    )}
-                >
-                    Current
-                </button>
-                <button 
-                    onClick={() => setActiveTab('past')}
-                    className={cn(
-                        "px-6 py-2 rounded-xl text-sm font-bold transition-all",
-                        activeTab === 'past' ? "bg-white text-google-grey shadow-sm" : "text-gray-500 hover:text-gray-700"
-                    )}
-                >
-                    Past
-                </button>
-            </div>
+            <CustomTabs
+                tabs={[
+                    { id: 'current', label: 'Current' },
+                    { id: 'past', label: 'Past' },
+                ]}
+                activeTab={activeTab}
+                onChange={(id) => setActiveTab(id as 'current' | 'past')}
+                className="bg-gray-100 border border-gray-200"
+            />
             
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>

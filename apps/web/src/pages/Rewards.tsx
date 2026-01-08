@@ -2,58 +2,15 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatTokenAmount } from '@/lib/utils';
-import { Gift, ShoppingBag, Search, Plus } from 'lucide-react';
+import { Gift, ShoppingBag, Search, Plus, PackageX } from 'lucide-react';
 import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { useCartStore } from '@/stores/cartStore';
 import { Pagination } from '@/components/ui/Pagination';
+import { Badge } from '@/components/ui/badge';
 
 const CATEGORIES = ['All', 'Swag', 'Electronics', 'Books', 'Digital', 'Other'];
-
-const THEMES = [
-  {
-    name: 'blue',
-    hex: '#4285F4',
-    lightBg: 'bg-blue-50',
-    borderColor: 'border-google-blue',
-    textColor: 'text-google-blue',
-    hoverShadow: 'hover:shadow-[8px_8px_0px_0px_#4285F4]',
-    buttonHover: 'hover:bg-google-blue',
-    buttonShadow: 'hover:shadow-[4px_4px_0px_0px_#4285F4]'
-  },
-  {
-    name: 'red',
-    hex: '#EA4335',
-    lightBg: 'bg-red-50',
-    borderColor: 'border-google-red',
-    textColor: 'text-google-red',
-    hoverShadow: 'hover:shadow-[8px_8px_0px_0px_#EA4335]',
-    buttonHover: 'hover:bg-google-red',
-    buttonShadow: 'hover:shadow-[4px_4px_0px_0px_#EA4335]'
-  },
-  {
-    name: 'yellow',
-    hex: '#FBBC04',
-    lightBg: 'bg-yellow-50',
-    borderColor: 'border-google-yellow',
-    textColor: 'text-google-yellow',
-    hoverShadow: 'hover:shadow-[8px_8px_0px_0px_#FBBC04]',
-    buttonHover: 'hover:bg-google-yellow',
-    buttonShadow: 'hover:shadow-[4px_4px_0px_0px_#FBBC04]'
-  },
-  {
-    name: 'green',
-    hex: '#34A853',
-    lightBg: 'bg-green-50',
-    borderColor: 'border-google-green',
-    textColor: 'text-google-green',
-    hoverShadow: 'hover:shadow-[8px_8px_0px_0px_#34A853]',
-    buttonHover: 'hover:bg-google-green',
-    buttonShadow: 'hover:shadow-[4px_4px_0px_0px_#34A853]'
-  }
-];
 
 export default function Rewards() {
   const { addItem, toggleCart, totalItems } = useCartStore();
@@ -80,18 +37,7 @@ export default function Rewards() {
     addItem({
       id: reward.id,
       name: reward.name,
-      cost: reward.cost, // Assuming backend returns cost as string or number of wei? API returns Int usually with Prisma if not mapped? 
-      // Prisma Int fits JS number up to 2^53? Wei is huge. 
-      // Schema says Int. "cost Int". This is likely NOT Wei but simple tokens or points.
-      // But DUMMY_REWARDS used "500000..." string.
-      // If schema is Int, it's points. If it's a dedicated token contract, it probably needs BigInt string.
-      // Let's assume schema Int is the truth for now, which means simpler numbers. 
-      // Wait, blockchain.ts uses `ethers.parseUnits(amount.toString(), decimals)`.
-      // The schema `cost Int` suggests it's stored as plain integer in DB, representing full tokens maybe?
-      // Let's check DUMMY_REWARDS again. "500 G-CORE" was cost 50000...
-      // If DB stores Int, it can't store 18 decimals wei if it's large.
-      // I'll assume DB stores "Display Amount" (e.g. 500) or it's just points.
-      // Let's use it as is.
+      cost: reward.cost,
       imageUrl: reward.imageUrl,
       maxStock: reward.stock,
     });
@@ -179,95 +125,83 @@ export default function Rewards() {
         </div>
       ) : (
         <>
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {data?.rewards.map((reward, index) => {
-              const theme = THEMES[index % THEMES.length];
-              return (
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+            {data?.rewards.map((reward: any, idx: number) => {
+               const colors = ['bg-pastel-blue', 'bg-pastel-red', 'bg-pastel-yellow', 'bg-pastel-green'];
+               const accentColor = colors[idx % colors.length];
+               return (
                 <div 
-                  key={reward.id}
-                  className={cn(
-                    "group flex flex-col overflow-hidden rounded-[2rem] border-2 bg-white shadow-sm transition-all hover:-translate-y-1",
-                    theme.borderColor,
-                    theme.hoverShadow
-                  )}
+                    key={reward.id} 
+                    className={cn(
+                        "group relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border border-google-grey p-8 transition-all hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_rgba(32,33,36,1)]",
+                        accentColor
+                    )}
                 >
-                  {/* Image Container */}
-                  <div className={cn("relative h-64 w-full overflow-hidden border-b-2 bg-gray-50", theme.borderColor)}>
-                    {reward.imageUrl ? (
-                      <img
-                        src={reward.imageUrl}
-                        alt={reward.name}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className={cn("flex h-full w-full items-center justify-center", theme.lightBg)}>
-                        <ShoppingBag className={cn("h-20 w-20 opacity-40", theme.textColor)} />
-                      </div>
-                    )}
-                    <div className={cn(
-                      "absolute right-4 top-4 rounded-full border-2 bg-white px-3 py-1 text-xs font-bold uppercase tracking-wider shadow-sm",
-                      theme.borderColor,
-                      theme.textColor
-                    )}>
-                      {reward.category}
-                    </div>
-                    {reward.stock <= 5 && reward.stock > 0 && (
-                      <div className="absolute left-4 top-4 rounded-full border-2 border-google-red bg-google-red px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-sm animate-pulse">
-                        Low Stock
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex flex-1 flex-col p-6">
-                    <div className="mb-6 flex-1 space-y-2">
-                      <h3 className={cn("text-xl font-bold transition-colors", theme.textColor)}>
-                        {reward.name}
-                      </h3>
-                      <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
-                        {reward.description}
-                      </p>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-end justify-between border-t-2 border-gray-100 pt-4">
-                        <div>
-                          <p className="text-xs font-bold uppercase text-gray-400 mb-1">Cost</p>
-                          <p className={cn("text-2xl font-bold", theme.textColor)}>
-                             {/* Adjust if backend sends raw number or wei string. Assuming raw number for simplest DB case, but if it sends wei string, formatTokenAmount handles it. */}
-                            {formatTokenAmount(reward.cost)} <span className="text-sm text-gray-500 font-medium">G-CORE</span>
-                          </p>
+                    <div className="relative">
+                        <div className="flex justify-between items-start mb-6">
+                             <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white border border-google-grey shadow-sm overflow-hidden">
+                                {reward.imageUrl ? (
+                                    <img src={reward.imageUrl} alt={reward.name} className="h-full w-full object-cover" />
+                                ) : (
+                                    <Gift className="h-8 w-8 text-google-grey opacity-20" />
+                                )}
+                             </div>
+                             <div className="flex flex-col gap-2 items-end">
+                                <Badge className="bg-white text-google-grey border-google-grey px-3 py-1 font-bold text-[10px] uppercase tracking-wider shadow-sm">
+                                    {reward.category}
+                                </Badge>
+                                {reward.stock <= 5 && reward.stock > 0 && (
+                                    <Badge className="bg-google-red text-white border-google-red px-2 py-0.5 font-bold text-[8px] uppercase tracking-wider animate-pulse">
+                                        Low Stock
+                                    </Badge>
+                                )}
+                             </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs font-bold uppercase text-gray-400 mb-1">Stock</p>
-                          <p className={cn(
-                            "font-bold",
-                            reward.stock > 0 ? "text-google-green" : "text-google-red"
-                          )}>
-                            {reward.stock > 0 ? `${reward.stock} available` : 'Sold Out'}
-                          </p>
-                        </div>
-                      </div>
 
-                      <Button
-                        className={cn(
-                          "w-full rounded-xl h-12 font-bold text-base transition-all border-2 bg-white",
-                          reward.stock > 0 
-                            ? cn(theme.borderColor, theme.textColor, theme.buttonHover, "hover:text-white", theme.buttonShadow)
-                            : "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-                        )}
-                        onClick={() => handleAddToCart(reward)}
-                        disabled={reward.stock === 0}
-                      >
-                         {reward.stock === 0 ? 'Out of Stock' : (
-                             <>
-                                <Plus className="mr-2 h-5 w-5" />
-                                Add to Cart
-                             </>
-                         )}
-                      </Button>
+                        <h3 className="text-2xl font-bold text-google-grey mb-2 line-clamp-1">{reward.name}</h3>
+                        <p className="text-gray-700 text-sm mb-8 line-clamp-2 leading-relaxed font-medium opacity-80 italic">
+                            {reward.description || "No description provided."}
+                        </p>
+
+                        <div className="space-y-3 mb-8">
+                            <div className="flex items-center justify-between text-sm font-bold text-google-grey bg-white/50 rounded-full px-5 py-2.5 border border-google-grey/10">
+                                <div className="flex items-center">
+                                    <ShoppingBag className="h-4 w-4 mr-2 text-google-blue" />
+                                    <span>Cost</span>
+                                </div>
+                                <span className="text-lg text-google-blue">{formatTokenAmount(reward.cost)} G-CORE</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm font-bold text-google-grey bg-white/50 rounded-full px-5 py-2.5 border border-google-grey/10">
+                                <div className="flex items-center">
+                                    <PackageX className="h-4 w-4 mr-2 text-google-red" />
+                                    <span>Availability</span>
+                                </div>
+                                <span className={cn(reward.stock > 0 ? "text-google-green" : "text-google-red")}>
+                                    {reward.stock > 0 ? `${reward.stock} Left` : 'Sold Out'}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                  </div>
+
+                    <div className="relative mt-auto pt-6 border-t border-google-grey/10">
+                        <Button 
+                            className={cn(
+                                "w-full rounded-2xl h-14 font-black text-lg transition-all border-2",
+                                reward.stock > 0 
+                                    ? "bg-google-grey text-white border-google-grey hover:bg-google-grey font-black shadow-[4px_4px_0px_0px_rgba(66,133,244,1)] active:translate-y-1 active:shadow-none"
+                                    : "bg-white text-gray-400 border-gray-200 cursor-not-allowed shadow-none"
+                            )}
+                            onClick={() => handleAddToCart(reward)}
+                            disabled={reward.stock === 0}
+                        >
+                            {reward.stock === 0 ? 'Out of Stock' : (
+                                <div className="flex items-center justify-center gap-2">
+                                    <Plus className="h-6 w-6" />
+                                    <span>Add to Cart</span>
+                                </div>
+                            )}
+                        </Button>
+                    </div>
                 </div>
               );
             })}

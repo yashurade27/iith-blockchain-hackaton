@@ -6,17 +6,26 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle, Copy, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Pagination } from '@/components/ui/Pagination';
+import { CustomTabs } from '@/components/ui/custom-tabs';
 
 export function OrderManager() {
   const { toast } = useToast();
+  const [activeSubTab, setActiveSubTab] = useState('current');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(8);
 
   const { data, refetch, isLoading } = useQuery({
-    queryKey: ['admin-orders', page, limit],
+    queryKey: ['admin-orders', page, limit, activeSubTab],
     queryFn: async () => {
-      const res = await api.getRedemptions({ page, limit });
+      // Note: The API might need enhancement if we want to fetch multiple statuses like PENDING + APPROVED
+      // For now, let's keep it simple or assume the API might support multi-status if we update it.
+      // But let's check what the API expects.
+      const res = await api.getRedemptions({ 
+          status: activeSubTab === 'current' ? 'PENDING' : 'DELIVERED',
+          page, 
+          limit 
+      });
       return res;
     }
   });
@@ -55,8 +64,19 @@ export function OrderManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-google-grey">Orders & Redemptions</h2>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+            <h2 className="text-2xl font-bold text-google-grey">Orders & Redemptions</h2>
+            <CustomTabs 
+                tabs={[
+                    { id: 'current', label: 'Pending Redemptions' },
+                    { id: 'past', label: 'Past Orders' },
+                ]}
+                activeTab={activeSubTab}
+                onChange={(id) => { setActiveSubTab(id); setPage(1); }}
+                className="bg-white border border-gray-200 mt-2"
+            />
+        </div>
         <div className="text-sm font-medium text-gray-500">
           Showing {data?.redemptions.length || 0} of {data?.total || 0} orders
         </div>

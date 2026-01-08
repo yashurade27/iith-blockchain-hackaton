@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -7,11 +8,16 @@ import { Calendar, Users, Trophy, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { CustomTabs } from '@/components/ui/custom-tabs';
+import { Pagination } from '@/components/ui/Pagination';
 
 export default function Events() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useWalletStore();
+  const [activeTab, setActiveTab] = useState('upcoming');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(6);
 
   const { data: events, isLoading } = useQuery({
     queryKey: ['events'],
@@ -44,6 +50,20 @@ export default function Events() {
       );
   }
 
+  // Filter events based on active tab
+  const filteredEvents = events?.filter((event: any) => {
+    const isPast = new Date(event.date) < new Date();
+    if (activeTab === 'upcoming') return !isPast;
+    if (activeTab === 'past') return isPast;
+    return true;
+  }) || [];
+
+  // Pagination logic
+  const totalItems = filteredEvents.length;
+  const totalPages = Math.ceil(totalItems / limit);
+  const offset = (currentPage - 1) * limit;
+  const paginatedEvents = filteredEvents.slice(offset, offset + limit);
+
   return (
     <div className="space-y-8 py-8">
       {/* Header Section */}
@@ -66,8 +86,24 @@ export default function Events() {
         </div>
       </div>
 
+      {/* Tabs and Controls */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+        <CustomTabs 
+          tabs={[
+            { id: 'upcoming', label: 'Upcoming Events', count: events?.filter((e: any) => new Date(e.date) >= new Date()).length },
+            { id: 'past', label: 'Past Events', count: events?.filter((e: any) => new Date(e.date) < new Date()).length },
+          ]}
+          activeTab={activeTab}
+          onChange={(id) => {
+            setActiveTab(id);
+            setCurrentPage(1);
+          }}
+          className="bg-white border border-gray-200 shadow-sm"
+        />
+      </div>
+
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {events?.map((event: any) => {
+        {paginatedEvents.map((event: any) => {
             const isParticipating = event.participations?.some((p: any) => p.userId === user?.id);
             const isPast = new Date(event.date) < new Date();
             const isFull = (event._count?.participations || 0) >= event.totalSlots;
@@ -75,7 +111,7 @@ export default function Events() {
 
             // Custom colors based on index or event properties
             const colors = ['bg-pastel-blue', 'bg-pastel-red', 'bg-pastel-yellow', 'bg-pastel-green'];
-            const cardColor = isPast ? 'bg-white' : colors[events.indexOf(event) % colors.length];
+            const cardColor = isPast ? 'bg-white' : colors[(events || []).indexOf(event) % colors.length];
 
             return (
                 <div 
@@ -148,12 +184,29 @@ export default function Events() {
                 </div>
             );
         })}
-        {(!events || events.length === 0) && (
+        {(!filteredEvents || filteredEvents.length === 0) && (
             <div className="col-span-full py-16 text-center text-gray-500 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                No active events found. Check back later!
+                 No {activeTab} events found.
             </div>
         )}
       </div>
+
+       {/* Pagination */}
+       {totalPages > 1 && (
+            <div className="bg-white rounded-3xl border border-google-grey overflow-hidden shadow-sm">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                limit={limit}
+                onLimitChange={(l) => {
+                  setLimit(l);
+                  setCurrentPage(1);
+                }}
+                totalItems={totalItems}
+              />
+            </div>
+          )}
     </div>
   );
 }

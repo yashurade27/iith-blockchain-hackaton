@@ -7,9 +7,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit2, Package, Loader2, Trash2, AlertTriangle } from 'lucide-react';
 import { formatTokenAmount } from '@/lib/utils';
 import { Pagination } from '@/components/ui/Pagination';
+import { CustomTabs } from '@/components/ui/custom-tabs';
 
 export function ProductManager() {
   const { toast } = useToast();
+  const [activeSubTab, setActiveSubTab] = useState('active');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
@@ -19,14 +21,12 @@ export function ProductManager() {
   const [limit, setLimit] = useState(8);
 
   const { data, refetch, isLoading } = useQuery({
-    queryKey: ['admin-products', page, limit],
+    queryKey: ['admin-products', page, limit, activeSubTab],
     queryFn: async () => {
-      // By default getRewards returns active only if active param is passed, 
-      // but admin might want to see all? Usually admin manages inventory so seeing all is good.
-      // Passing isActive: undefined (default) to get all.
       return api.getRewards({ 
           page, 
-          limit 
+          limit,
+          isActive: activeSubTab === 'active' ? 'true' : 'false'
       });
     }
   });
@@ -101,8 +101,19 @@ export function ProductManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-google-grey">Products</h2>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+            <h2 className="text-2xl font-bold text-google-grey">Products Inventory</h2>
+            <CustomTabs 
+                tabs={[
+                    { id: 'active', label: 'Active' },
+                    { id: 'archived', label: 'Archived' },
+                ]}
+                activeTab={activeSubTab}
+                onChange={(id) => { setActiveSubTab(id); setPage(1); }}
+                className="bg-white border border-gray-200 mt-2"
+            />
+        </div>
         <Button 
             onClick={() => { setEditingProduct(null); setIsModalOpen(true); }}
             className="rounded-xl bg-google-green hover:bg-google-green/90 text-white font-bold"

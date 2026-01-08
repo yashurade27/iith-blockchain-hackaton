@@ -3,13 +3,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Check, X, User as UserIcon, Clock, ShieldCheck } from 'lucide-react';
+import { Check, X, User as UserIcon, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CustomTabs } from '@/components/ui/custom-tabs';
 
 export function UserManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeSubTab, setActiveSubTab] = useState<'pending' | 'approved'>('pending');
+  const [activeSubTab, setActiveSubTab] = useState('pending');
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin', 'users', activeSubTab],
@@ -36,29 +37,21 @@ export function UserManager() {
     }
   });
 
-  const subTabs = [
-    { id: 'pending', label: 'Pending Approvals', icon: Clock },
-    { id: 'approved', label: 'Approved Users', icon: ShieldCheck },
-  ];
-
   return (
     <div className="space-y-6">
-      <div className="flex gap-2 p-1 bg-gray-100 rounded-xl w-fit">
-        {subTabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveSubTab(tab.id as any)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all",
-              activeSubTab === tab.id 
-                ? "bg-white text-google-grey shadow-sm" 
-                : "text-gray-500 hover:text-gray-700"
-            )}
-          >
-            <tab.icon className="h-4 w-4" />
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+            <h2 className="text-2xl font-bold text-google-grey">User Management</h2>
+            <CustomTabs 
+                tabs={[
+                    { id: 'pending', label: 'Pending Approvals' },
+                    { id: 'approved', label: 'Approved Users' },
+                ]}
+                activeTab={activeSubTab}
+                onChange={(id) => setActiveSubTab(id)}
+                className="bg-white border border-gray-200 mt-2"
+            />
+        </div>
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm transition-all">
