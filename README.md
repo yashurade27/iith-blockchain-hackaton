@@ -4,6 +4,11 @@
 
 ### *Blockchain-Powered Community Engagement for GDG PCCOER*
 
+# [**🚀 LIVE LINK 🚀**](https://iith-blockchain-hackaton-web.vercel.app/)
+
+[![Frontend](https://img.shields.io/badge/Frontend-Live-success?style=for-the-badge&logo=vercel)](https://iith-blockchain-hackaton-web.vercel.app/)
+[![Backend](https://img.shields.io/badge/Backend-Live-blue?style=for-the-badge&logo=render)](https://gcore-api.onrender.com)
+
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.20-363636?logo=solidity)](https://soliditylang.org/)
 [![React](https://img.shields.io/badge/React-18.2-61DAFB?logo=react)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript)](https://www.typescriptlang.org/)
@@ -14,6 +19,20 @@
 **A Web3-based rewards platform where GDG PCCOER community members earn G-CORE (ERC-20) tokens for participating in coding contests, hackathons, workshops, and events. Tokens can be redeemed for exclusive merchandise and goodies.**
 
 # 🎥 [**WATCH DEMO VIDEO**](https://drive.google.com/drive/folders/1tjm5P7TLu4rMy4PibE9hWyycAcSvskED?usp=sharing) 🎥
+
+---
+
+## 🚀 Live Deployment
+
+The platform is fully deployed and accessible at the following endpoints:
+
+| Service | Status | URL |
+| :--- | :--- | :--- |
+| **🌐 Frontend App** | [![Vercel](https://img.shields.io/badge/Vercel-Live-success?style=flat&logo=vercel)](https://iith-blockchain-hackaton-web.vercel.app/) | [iith-blockchain-hackaton-web.vercel.app](https://iith-blockchain-hackaton-web.vercel.app/) |
+| **⚙️ Backend API** | [![Render](https://img.shields.io/badge/Render-Live-blue?style=flat&logo=render)](https://gcore-api.onrender.com) | [gcore-api.onrender.com](https://gcore-api.onrender.com) |
+| **🏥 API Health** | [![Status](https://img.shields.io/badge/Status-Healthy-success?style=flat)](https://gcore-api.onrender.com/health) | [/health](https://gcore-api.onrender.com/health) |
+
+---
 
 ### [⚡ **GO TO SETUP & INSTALLATION** ⚡](#setup--installation)
 
@@ -215,21 +234,21 @@ RPC_URL="https://sepolia.infura.io/v3/YOUR_API_KEY"
 PRIVATE_KEY="your-wallet-private-key"
 
 # Contract Addresses (Sepolia)
-CONTRACT_ADDRESS="0x44996C0CAc1Ea96F7BFb1c9F6c021e84A073d7b5"
-DISTRIBUTOR_ADDRESS="0x3384555316837cAEeE7BAd2a7ACbB3E888C59ca7"
-MARKETPLACE_ADDRESS="0x918d77399Ea5BA428c5B9E48F274A8D90a89E6Bc"
+CONTRACT_ADDRESS="0x88aA29447A86a22311295f9edCA7040020844ddB"
+DISTRIBUTOR_ADDRESS="0xe33F2D04bEf43bb88606c3767107B30cd1a8d822"
+MARKETPLACE_ADDRESS="0x2A81b7b2716Dd56AE0DA79bae4f234E7A3d705D1"
 ```
 
 ### Frontend (`apps/web/.env`)
 
 ```env
-VITE_API_URL="http://localhost:3001"
+VITE_API_URL="https://gcore-api.onrender.com"
 VITE_CHAIN_ID=11155111
 
 # Contract Addresses (Sepolia)
-VITE_CONTRACT_ADDRESS="0x44996C0CAc1Ea96F7BFb1c9F6c021e84A073d7b5"
-VITE_DISTRIBUTOR_ADDRESS="0x3384555316837cAEeE7BAd2a7ACbB3E888C59ca7"
-VITE_MARKETPLACE_ADDRESS="0x918d77399Ea5BA428c5B9E48F274A8D90a89E6Bc"
+VITE_CONTRACT_ADDRESS="0x88aA29447A86a22311295f9edCA7040020844ddB"
+VITE_DISTRIBUTOR_ADDRESS="0xe33F2D04bEf43bb88606c3767107B30cd1a8d822"
+VITE_MARKETPLACE_ADDRESS="0x2A81b7b2716Dd56AE0DA79bae4f234E7A3d705D1"
 ```
 
 ### Contracts (`packages/contracts/.env`)
