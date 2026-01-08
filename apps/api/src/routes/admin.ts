@@ -37,6 +37,127 @@ const verifyActivitySchema = z.object({
   }).optional(),
 });
 
+const rewardSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().min(1),
+  cost: z.number().int().positive(),
+  stock: z.number().int().min(0),
+  imageUrl: z.string().url().optional(),
+  category: z.string().min(1),
+  isActive: z.boolean().optional(),
+});
+
+const rewardUpdateSchema = rewardSchema.partial();
+
+/**
+ * POST /api/admin/rewards
+ * Create a new reward
+ */
+router.post('/rewards', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const data = rewardSchema.parse(req.body);
+    
+    const reward = await prisma.reward.create({
+      data: {
+        ...data,
+        isActive: data.isActive ?? true,
+      },
+    });
+
+    logger.info(`Reward created: ${reward.name}`);
+
+    res.json({
+      success: true,
+      data: { reward },
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      next(new AppError('Invalid reward data', 400));
+    } else {
+      next(error);
+    }
+  }
+});
+
+/**
+ * PATCH /api/admin/rewards/:id
+ * Update an existing reward
+ */
+router.patch('/rewards/:id', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { id } = req.params;
+    const data = rewardUpdateSchema.parse(req.body);
+
+    const reward = await prisma.reward.update({
+      where: { id },
+      data,
+    });
+
+    logger.info(`Reward updated: ${reward.name}`);
+
+    res.json({
+      success: true,
+      data: { reward },
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      next(new AppError('Invalid reward update data', 400));
+    } else {
+      next(error);
+    }
+  }
+});
+
+/**
+ * DELETE /api/admin/rewards/:id
+ * Delete a reward
+ */
+router.delete('/rewards/:id', async (req: AuthRequest, res: Response, next) => {
+  try {
+    const { id } = req.params;
+
+    // Check if reward exists and has redemptions
+    const reward = await prisma.reward.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: { redemptions: true },
+        },
+      },
+    });
+
+    if (!reward) {
+      throw new AppError('Reward not found', 404);
+    }
+
+    if (reward._count.redemptions > 0) {
+      // Soft delete if it has redemptions history
+      const updated = await prisma.reward.update({
+        where: { id },
+        data: { isActive: false },
+      });
+      logger.info(`Reward soft-deleted (archived): ${reward.name}`);
+      res.json({
+        success: true,
+        message: 'Reward has history, archived instead of deleted',
+        data: { reward: updated },
+      });
+    } else {
+      // Hard delete if no history
+      await prisma.reward.delete({
+        where: { id },
+      });
+      logger.info(`Reward deleted: ${reward.name}`);
+      res.json({
+        success: true,
+        message: 'Reward deleted successfully',
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
 /**
  * POST /api/admin/distribute
  * Distribute G-CORE tokens

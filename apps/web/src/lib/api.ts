@@ -82,16 +82,21 @@ class ApiClient {
     const limit = params?.limit || 50;
     const offset = (page - 1) * limit;
     
-    const queryParams = {
+    const queryParams: any = {
       ...params,
       offset: offset.toString(),
       limit: limit.toString(),
     };
     
     // Remove page from query params as backend expects offset
-    delete (queryParams as any).page;
+    delete queryParams.page;
 
-    const query = new URLSearchParams(queryParams as any).toString();
+    // Filter out undefined/null/empty values
+    const cleanParams = Object.fromEntries(
+      Object.entries(queryParams).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    );
+
+    const query = new URLSearchParams(cleanParams as any).toString();
     return this.request<{
       leaderboard: any[];
       pagination: {
@@ -111,7 +116,10 @@ class ApiClient {
     page?: number;
     limit?: number;
   }) {
-    const query = new URLSearchParams(params as any).toString();
+    const cleanParams = Object.fromEntries(
+      Object.entries(params || {}).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const query = new URLSearchParams(cleanParams as any).toString();
     return this.request<{ 
       rewards: any[];
       pagination: {
@@ -123,6 +131,26 @@ class ApiClient {
     }>(`/rewards?${query}`);
   }
 
+  async createReward(data: any) {
+    return this.request<{ reward: any }>('/admin/rewards', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateReward(id: string, data: any) {
+    return this.request<{ reward: any }>(`/admin/rewards/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteReward(id: string) {
+    return this.request<{ message: string }>(`/admin/rewards/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   async redeemReward(rewardId: string, quantity: number) {
     return this.request<{ redemption: any; txHash: string }>('/rewards/redeem', {
       method: 'POST',
@@ -132,7 +160,10 @@ class ApiClient {
 
   // Transactions
   async getTransactions(params?: { page?: number; limit?: number }) {
-    const query = new URLSearchParams(params as any).toString();
+    const cleanParams = Object.fromEntries(
+      Object.entries(params || {}).filter(([_, v]) => v !== undefined && v !== null)
+    );
+    const query = new URLSearchParams(cleanParams as any).toString();
     return this.request<{
       transactions: any[];
       total: number;
@@ -200,7 +231,10 @@ class ApiClient {
   }
 
   async getRedemptions(params?: { status?: string; page?: number; limit?: number }) {
-    const query = new URLSearchParams(params as any).toString();
+    const cleanParams = Object.fromEntries(
+      Object.entries(params || {}).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const query = new URLSearchParams(cleanParams as any).toString();
     return this.request<{
       redemptions: any[];
       total: number;

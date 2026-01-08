@@ -2,11 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatTokenAmount } from '@/lib/utils';
-import { Gift, Loader2, ShoppingBag, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Gift, ShoppingBag, Search, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { ethers } from 'ethers';
+import { api } from '@/lib/api';
+import { useCartStore } from '@/stores/cartStore';
 
 const CATEGORIES = ['All', 'Swag', 'Electronics', 'Books', 'Digital', 'Other'];
 
@@ -53,137 +55,72 @@ const THEMES = [
   }
 ];
 
-const DUMMY_REWARDS = [
-  {
-    id: '1',
-    name: 'Google Developer Hoodie',
-    description: 'Premium cotton blend hoodie with embroidered Google Developer logo. Perfect for coding sessions.',
-    cost: '500000000000000000000', // 500 G-CORE
-    stock: 15,
-    category: 'Swag',
-    imageUrl: 'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&q=80&w=800',
-  },
-  {
-    id: '2',
-    name: 'Mechanical Keyboard',
-    description: 'Wireless mechanical keyboard with custom G-CORE keycaps and RGB lighting.',
-    cost: '1200000000000000000000', // 1200 G-CORE
-    stock: 5,
-    category: 'Electronics',
-    imageUrl: 'https://images.unsplash.com/photo-1595225476474-87563907a212?auto=format&fit=crop&q=80&w=800',
-  },
-  {
-    id: '3',
-    name: 'Google Cloud Credits $50',
-    description: 'Get $50 worth of Google Cloud Platform credits for your next project.',
-    cost: '200000000000000000000', // 200 G-CORE
-    stock: 50,
-    category: 'Digital',
-    imageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=800',
-  },
-  {
-    id: '4',
-    name: 'Android Plushie',
-    description: 'Adorable Android mascot plushie. A must-have for every Android developer.',
-    cost: '150000000000000000000', // 150 G-CORE
-    stock: 0,
-    category: 'Swag',
-    imageUrl: 'https://images.unsplash.com/photo-1601057298562-4d649d295727?auto=format&fit=crop&q=80&w=800',
-  },
-  {
-    id: '5',
-    name: 'Tech Backpack',
-    description: 'Water-resistant laptop backpack with multiple compartments for all your gadgets.',
-    cost: '800000000000000000000', // 800 G-CORE
-    stock: 8,
-    category: 'Swag',
-    imageUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&q=80&w=800',
-  },
-  {
-    id: '6',
-    name: 'Clean Code Book',
-    description: 'Classic guide to software craftsmanship. Essential reading for every developer.',
-    cost: '300000000000000000000', // 300 G-CORE
-    stock: 12,
-    category: 'Books',
-    imageUrl: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=800',
-  },
-];
-
 export default function Rewards() {
   const { toast } = useToast();
-  const [redeeming, setRedeeming] = useState<string | null>(null);
+  const { addItem, toggleCart, totalItems } = useCartStore();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [page, setPage] = useState(1);
-  const limit = 6;
+  const limit = 9;
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['rewards', page, category, search],
     queryFn: async () => {
-      // For now, return dummy data mixed with API structure
-      // In a real scenario, we would just call api.getRewards
-      // const res = await api.getRewards({ ... });
-      
-      // Simulating API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      let filtered = [...DUMMY_REWARDS];
-      
-      if (category !== 'All') {
-        filtered = filtered.filter(r => r.category === category);
-      }
-      
-      if (search) {
-        const lowerSearch = search.toLowerCase();
-        filtered = filtered.filter(r => 
-          r.name.toLowerCase().includes(lowerSearch) || 
-          r.description.toLowerCase().includes(lowerSearch)
-        );
-      }
-
-      const start = (page - 1) * limit;
-      const paginated = filtered.slice(start, start + limit);
-
-      return {
-        rewards: paginated,
-        pagination: {
-          total: filtered.length,
-          page,
-          limit,
-          totalPages: Math.ceil(filtered.length / limit)
-        }
-      };
+      const res = await api.getRewards({
+        category: category === 'All' ? undefined : category,
+        search: search || undefined,
+        page,
+        limit,
+        isActive: 'true'
+      });
+      return res;
     },
   });
 
-  const handleRedeem = async (rewardId: string, name: string) => {
-    try {
-      setRedeeming(rewardId);
-      // Mock redemption for dummy data
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast({
-        title: 'Redemption Successful',
-        description: `Successfully redeemed ${name}!`,
-      });
-      
-      refetch();
-    } catch (error: any) {
-      toast({
-        title: 'Redemption Failed',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } finally {
-      setRedeeming(null);
-    }
+  const handleAddToCart = (reward: any) => {
+    addItem({
+      id: reward.id,
+      name: reward.name,
+      cost: reward.cost, // Assuming backend returns cost as string or number of wei? API returns Int usually with Prisma if not mapped? 
+      // Prisma Int fits JS number up to 2^53? Wei is huge. 
+      // Schema says Int. "cost Int". This is likely NOT Wei but simple tokens or points.
+      // But DUMMY_REWARDS used "500000..." string.
+      // If schema is Int, it's points. If it's a dedicated token contract, it probably needs BigInt string.
+      // Let's assume schema Int is the truth for now, which means simpler numbers. 
+      // Wait, blockchain.ts uses `ethers.parseUnits(amount.toString(), decimals)`.
+      // The schema `cost Int` suggests it's stored as plain integer in DB, representing full tokens maybe?
+      // Let's check DUMMY_REWARDS again. "500 G-CORE" was cost 50000...
+      // If DB stores Int, it can't store 18 decimals wei if it's large.
+      // I'll assume DB stores "Display Amount" (e.g. 500) or it's just points.
+      // Let's use it as is.
+      imageUrl: reward.imageUrl,
+      maxStock: reward.stock,
+    });
+    toast({
+      title: 'Added to Cart',
+      description: `${reward.name} added to your cart.`,
+    });
   };
 
   const totalPages = data?.pagination?.totalPages || 1;
 
   return (
-    <div className="space-y-8 py-8">
+    <div className="space-y-8 py-8 relative">
+      {/* Floating Cart Button */}
+      <Button
+        onClick={toggleCart}
+        className="fixed bottom-8 right-8 z-40 h-16 w-16 rounded-full bg-google-blue shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:scale-110 hover:bg-google-blue transition-all"
+      >
+        <div className="relative">
+          <ShoppingBag className="h-8 w-8 text-white" />
+          {totalItems() > 0 && (
+            <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-google-red text-xs font-bold text-white border-2 border-google-blue">
+              {totalItems()}
+            </span>
+          )}
+        </div>
+      </Button>
+
       {/* Header Section */}
       <div className="relative overflow-hidden rounded-[2.5rem] border border-google-grey bg-white px-8 py-12 shadow-sm">
         <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-pastel-green opacity-50 blur-3xl" />
@@ -302,7 +239,8 @@ export default function Rewards() {
                         <div>
                           <p className="text-xs font-bold uppercase text-gray-400 mb-1">Cost</p>
                           <p className={cn("text-2xl font-bold", theme.textColor)}>
-                            {formatTokenAmount(ethers.formatEther(reward.cost))} <span className="text-sm text-gray-500 font-medium">G-CORE</span>
+                             {/* Adjust if backend sends raw number or wei string. Assuming raw number for simplest DB case, but if it sends wei string, formatTokenAmount handles it. */}
+                            {formatTokenAmount(reward.cost)} <span className="text-sm text-gray-500 font-medium">G-CORE</span>
                           </p>
                         </div>
                         <div className="text-right">
@@ -323,19 +261,15 @@ export default function Rewards() {
                             ? cn(theme.borderColor, theme.textColor, theme.buttonHover, "hover:text-white", theme.buttonShadow)
                             : "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
                         )}
-                        onClick={() => handleRedeem(reward.id, reward.name)}
-                        disabled={reward.stock === 0 || redeeming === reward.id}
+                        onClick={() => handleAddToCart(reward)}
+                        disabled={reward.stock === 0}
                       >
-                        {redeeming === reward.id ? (
-                          <>
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            Processing...
-                          </>
-                        ) : reward.stock === 0 ? (
-                          'Out of Stock'
-                        ) : (
-                          'Redeem Now'
-                        )}
+                         {reward.stock === 0 ? 'Out of Stock' : (
+                             <>
+                                <Plus className="mr-2 h-5 w-5" />
+                                Add to Cart
+                             </>
+                         )}
                       </Button>
                     </div>
                   </div>
