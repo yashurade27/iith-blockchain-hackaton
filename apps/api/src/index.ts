@@ -11,6 +11,7 @@ import leaderboardRoutes from './routes/leaderboard';
 import rewardRoutes from './routes/rewards';
 import transactionRoutes from './routes/transactions';
 import adminRoutes from './routes/admin';
+import notificationRoutes from './routes/notifications';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -40,6 +41,7 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/rewards', rewardRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Error handling
 app.use(errorHandler);

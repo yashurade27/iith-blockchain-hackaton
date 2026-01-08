@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { formatTokenAmount, truncateAddress } from '@/lib/utils';
-import { Trophy, Activity, Medal, Crown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trophy, Activity, Medal, Crown, ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -21,8 +21,10 @@ export default function Leaderboard() {
     refetchInterval: 5000,
   });
 
-  // Filter for EARN transactions (distributions)
-  const realDistributions = txData?.transactions?.filter((tx: any) => tx.type === 'EARN') || [];
+  // Filter for EARN (distributions) and REDEEM (swag purchases)
+  const realDistributions = txData?.transactions?.filter((tx: any) => 
+    tx.type === 'EARN' || tx.type === 'REDEEM'
+  ) || [];
 
   // Duplicate for seamless scrolling
   const tickerItems = [...realDistributions, ...realDistributions];
@@ -186,18 +188,27 @@ export default function Leaderboard() {
                       className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:scale-[1.02] hover:shadow-md hover:border-google-blue/30"
                     >
                       <div className="flex items-start justify-between gap-4">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-pastel-blue/30 text-google-blue">
-                          <Activity className="h-5 w-5" />
+                        <div className={cn(
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white",
+                          tx.type === 'EARN' ? "bg-google-green" : "bg-google-red"
+                        )}>
+                          {tx.type === 'EARN' ? <Activity className="h-5 w-5" /> : <ShoppingBag className="h-5 w-5" />}
                         </div>
                         <div className="flex-1 space-y-1">
                           <p className="text-sm font-medium text-google-grey">
                             <span className="font-bold text-google-blue">
                               {tx.user?.name || truncateAddress(tx.user?.walletAddress || 'Unknown')}
                             </span>
-                            {' '}received{' '}
-                            <span className="font-bold text-google-green">
-                              {formatTokenAmount(tx.amount)} G-CORE
-                            </span>
+                            {' '}
+                            {tx.type === 'EARN' ? (
+                              <>
+                                received <span className="font-bold text-google-green">{formatTokenAmount(tx.amount)} G-CORE</span>
+                              </>
+                            ) : (
+                              <>
+                                spent <span className="font-bold text-google-red">{formatTokenAmount(tx.amount)} G-CORE</span>
+                              </>
+                            )}
                           </p>
                           <p className="text-xs text-gray-500 line-clamp-2">
                             {tx.description}

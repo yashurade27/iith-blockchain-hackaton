@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import WalletConnect from '@/components/wallet/WalletConnect';
+import { NotificationsDropdown } from './NotificationsDropdown';
 import { useWalletStore } from '@/stores/walletStore';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -72,7 +73,8 @@ export default function Navbar() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 p-3">
+          <NotificationsDropdown />
           <WalletConnect />
         </div>
       </div>

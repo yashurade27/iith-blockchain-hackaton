@@ -163,7 +163,7 @@ router.post('/redeem', authenticate, async (req: AuthRequest, res: Response, nex
         userId: req.user.id,
         rewardId: rewardId,
         quantity,
-        status: 'APPROVED',
+        status: 'PENDING',
         txHash: txHash,
       },
       include: {
@@ -191,6 +191,42 @@ router.post('/redeem', authenticate, async (req: AuthRequest, res: Response, nex
         txHash: txHash,
       },
     });
+
+    // 3. Create Notifications
+    try {
+      // User Notification
+      await prisma.notification.create({
+        data: {
+          userId: req.user.id,
+          title: 'Purchase Successful!',
+          message: `Your order for ${quantity}x ${reward.name} has been placed. Current status: PENDING.`,
+          type: 'SUCCESS',
+          link: '/profile',
+        },
+      });
+
+      // Admin Notifications
+      const admins = await prisma.user.findMany({
+        where: {
+          role: { in: ['ADMIN', 'SUPER_ADMIN'] }
+        }
+      });
+
+      await Promise.all(admins.map(admin => 
+        prisma.notification.create({
+          data: {
+            userId: admin.id,
+            title: 'New Reward Redemption',
+            message: `${req.user?.name || req.user?.walletAddress} purchased ${quantity}x ${reward.name}.`,
+            type: 'REDEMPTION',
+            link: '/admin',
+          },
+        })
+      ));
+    } catch (notifyError) {
+      logger.error('Failed to create notifications for redemption:', notifyError);
+      // Don't fail the request if notifications fail
+    }
 
     res.json({
       success: true,

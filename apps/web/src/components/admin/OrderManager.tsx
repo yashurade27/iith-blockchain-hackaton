@@ -45,6 +45,7 @@ export function OrderManager() {
     PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     APPROVED: 'bg-blue-100 text-blue-800 border-blue-200',
     FULFILLED: 'bg-green-100 text-green-800 border-green-200',
+    DELIVERED: 'bg-google-blue/10 text-google-blue border-google-blue/20',
     CANCELLED: 'bg-gray-100 text-gray-800 border-gray-200',
   };
 
@@ -97,19 +98,26 @@ export function OrderManager() {
                     </span>
                   </td>
                   <td className="p-4 text-right">
-                    {order.status === 'PENDING' && (
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleUpdateStatus(order.id, 'FULFILLED')}
-                        disabled={updatingId === order.id}
-                        className="rounded-lg bg-google-green hover:bg-google-green/90 text-white font-bold text-xs"
-                      >
-                         {updatingId === order.id ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Mark Done'}
-                      </Button>
+                    {(order.status === 'PENDING' || order.status === 'APPROVED' || order.status === 'FULFILLED') && (
+                      <div className="flex justify-end gap-2">
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleUpdateStatus(order.id, 'DELIVERED')}
+                          disabled={updatingId === order.id}
+                          className="rounded-lg bg-google-blue hover:bg-google-blue/90 text-white font-bold text-xs"
+                        >
+                          {updatingId === order.id ? <Loader2 className="h-4 w-4 animate-spin"/> : 'Mark Delivered'}
+                        </Button>
+                      </div>
+                    )}
+                    {order.status === 'DELIVERED' && (
+                        <span className="text-xs font-bold text-google-blue flex items-center justify-end gap-1">
+                            <CheckCircle className="h-4 w-4" /> Delivered & Live
+                        </span>
                     )}
                     {order.status === 'FULFILLED' && (
                         <span className="text-xs font-bold text-green-600 flex items-center justify-end gap-1">
-                            <CheckCircle className="h-4 w-4" /> Delivered
+                            <CheckCircle className="h-4 w-4" /> Fulfilled
                         </span>
                     )}
                   </td>

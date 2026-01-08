@@ -22,8 +22,25 @@ model User {
   transactions  Transaction[]
   redemptions   Redemption[]
   activities    Activity[]
+  notifications Notification[]
 
   @@index([walletAddress])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO, SUCCESS, WARNING, ERROR, REDEMPTION
+  isRead    Boolean  @default(false)
+  link      String?  // Optional link to navigate to
+  createdAt DateTime @default(now())
+
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model Transaction {
@@ -125,5 +142,6 @@ enum RedemptionStatus {
   PENDING
   APPROVED
   FULFILLED
+  DELIVERED
   CANCELLED
 }

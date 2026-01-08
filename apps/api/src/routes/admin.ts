@@ -449,12 +449,15 @@ router.patch('/redemptions/:id', async (req: AuthRequest, res: Response, next) =
 
     const { id } = req.params;
     const { status, txHash } = z.object({
-      status: z.enum(['PENDING', 'APPROVED', 'FULFILLED', 'CANCELLED']),
+      status: z.enum(['PENDING', 'APPROVED', 'FULFILLED', 'DELIVERED', 'CANCELLED']),
       txHash: z.string().optional(),
     }).parse(req.body);
 
     const redemption = await prisma.redemption.findUnique({
       where: { id },
+      include: {
+        reward: true,
+      },
     });
 
     if (!redemption) {
@@ -472,6 +475,26 @@ router.patch('/redemptions/:id', async (req: AuthRequest, res: Response, next) =
         reward: true,
       },
     });
+
+    // Create notification for the user
+    try {
+      let message = `The status of your redemption for ${redemption.reward.name} has been updated to ${status}.`;
+      if (status === 'DELIVERED') {
+        message = `Congratulations! Your reward (${redemption.reward.name}) has been delivered. Enjoy your swag!`;
+      }
+
+      await prisma.notification.create({
+        data: {
+          userId: redemption.userId,
+          title: 'Redemption Update',
+          message,
+          type: status === 'DELIVERED' ? 'SUCCESS' : 'INFO',
+          link: '/profile',
+        },
+      });
+    } catch (notifyError) {
+      logger.error('Failed to notify user about redemption update:', notifyError);
+    }
 
     logger.info(`Redemption ${id} updated to ${status}`);
 

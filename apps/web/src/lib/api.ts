@@ -249,6 +249,23 @@ class ApiClient {
       body: JSON.stringify({ status }),
     });
   }
+
+  // Notifications
+  async getNotifications() {
+    return this.request<{ notifications: any[]; unreadCount: number }>('/notifications');
+  }
+
+  async markNotificationAsRead(id: string) {
+    return this.request<{ message: string }>(`/notifications/${id}/read`, {
+      method: 'PATCH',
+    });
+  }
+
+  async markAllNotificationsAsRead() {
+    return this.request<{ message: string }>('/notifications/read-all', {
+      method: 'POST',
+    });
+  }
 }
 
 export const api = new ApiClient();
