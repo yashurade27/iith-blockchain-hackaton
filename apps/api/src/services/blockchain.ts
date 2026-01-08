@@ -5,6 +5,7 @@ const TOKEN_ABI = [
   'function balanceOf(address account) view returns (uint256)',
   'function decimals() view returns (uint8)',
   'function transfer(address to, uint256 amount) returns (bool)',
+  'function burnFrom(address from, uint256 amount, string reason)',
   'event Transfer(address indexed from, address indexed to, uint256 value)',
   'event TokensMinted(address indexed to, uint256 amount, string reason)',
   'event TokensBurned(address indexed from, uint256 amount, string reason)',
@@ -127,23 +128,24 @@ export async function redeemTokens(
   quantity: number
 ): Promise<string> {
   try {
-    // userAddress is not used in the contract call but good to validate
-    ethers.getAddress(userAddress); 
+    const checksumAddress = ethers.getAddress(userAddress); 
     const decimals = await tokenContract.decimals();
     const amount = ethers.parseUnits(tokenAmount.toString(), decimals);
 
-    // Create a new contract instance with signer for this transaction
-    const marketplaceWithSigner = new ethers.Contract(
-      process.env.MARKETPLACE_ADDRESS!,
-      MARKETPLACE_ABI,
+    // Use token contract directly to burn from user
+    // This is possible because the burnFrom in GDGToken.sol is public
+    const tokenWithSigner = new ethers.Contract(
+      process.env.CONTRACT_ADDRESS!,
+      TOKEN_ABI,
       wallet
     );
 
-    const tx = await marketplaceWithSigner.redeemTokens(rewardId, amount, quantity);
+    const reason = `Redemption for reward: ${rewardId} (Qty: ${quantity})`;
+    const tx = await tokenWithSigner.burnFrom(checksumAddress, amount, reason);
 
-    logger.info(`Redemption transaction sent: ${tx.hash}`);
+    logger.info(`Redemption (burn) transaction sent: ${tx.hash}`);
     const receipt = await tx.wait();
-    logger.info(`Redemption confirmed in block ${receipt.blockNumber}`);
+    logger.info(`Redemption (burn) confirmed in block ${receipt.blockNumber}`);
 
     return tx.hash;
   } catch (error) {

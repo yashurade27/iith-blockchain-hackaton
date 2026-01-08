@@ -96,10 +96,6 @@ export default function Rewards() {
       imageUrl: reward.imageUrl,
       maxStock: reward.stock,
     });
-    toast({
-      title: 'Added to Cart',
-      description: `${reward.name} added to your cart.`,
-    });
   };
 
   const totalPages = data?.pagination?.totalPages || 1;

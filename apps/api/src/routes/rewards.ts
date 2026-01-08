@@ -4,6 +4,7 @@ import { AuthRequest, authenticate } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import prisma from '../utils/prisma';
 import { logger } from '../utils/logger';
+import { redeemTokens } from '../services/blockchain';
 
 const router = Router();
 
@@ -122,7 +123,7 @@ router.post('/redeem', authenticate, async (req: AuthRequest, res: Response, nex
     }
 
     const { rewardId, quantity } = redeemSchema.parse(req.body);
-    logger.info(`Redemption: user=${req.user.id}, reward=${rewardId}, qty=${quantity}`);
+    logger.info(`Redemption request: user=${req.user.id}, wallet=${req.user.walletAddress}, reward=${rewardId}, qty=${quantity}`);
 
     const reward = await prisma.reward.findUnique({
       where: { id: rewardId },
@@ -142,11 +143,28 @@ router.post('/redeem', authenticate, async (req: AuthRequest, res: Response, nex
 
     const totalCost = reward.cost * quantity;
 
+    // 1. Blockchain Transaction (Burn tokens from user)
+    let txHash: string;
+    try {
+      txHash = await redeemTokens(
+        req.user.walletAddress,
+        rewardId,
+        totalCost,
+        quantity
+      );
+    } catch (error: any) {
+      logger.error('Blockchain redemption failed:', error);
+      throw new AppError(`Blockchain transaction failed: ${error.message}`, 500);
+    }
+
+    // 2. Create database records
     const redemption = await prisma.redemption.create({
       data: {
         userId: req.user.id,
         rewardId: rewardId,
         quantity,
+        status: 'APPROVED',
+        txHash: txHash,
       },
       include: {
         user: true,
@@ -169,14 +187,16 @@ router.post('/redeem', authenticate, async (req: AuthRequest, res: Response, nex
         amount: totalCost,
         type: 'REDEEM',
         description: `Redeemed ${quantity}x ${reward.name}`,
-        status: 'PENDING',
+        status: 'COMPLETED',
+        txHash: txHash,
       },
     });
 
     res.json({
       success: true,
-      message: 'Redemption created successfully',
+      message: 'Reward redeemed successfully',
       data: {
+        txHash,
         redemption: {
           id: redemption.id,
           rewardId: reward.id,

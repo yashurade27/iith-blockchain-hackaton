@@ -30,9 +30,16 @@ export function CartDrawer() {
     let successCount = 0;
     
     try {
-      // Process items sequentially to avoid race conditions or nonce issues if blockchain involved later
+      // Process items sequentially to avoid race conditions
       for (const item of items) {
         try {
+          toast({
+            title: 'Processing Redemption',
+            description: `Redeeming ${item.name}...`,
+          });
+
+          // The backend now handles the blockchain transaction (burn) 
+          // to save the user from gas fees.
           await api.redeemReward(item.id, item.quantity);
           successCount++;
         } catch (error: any) {
@@ -42,20 +49,24 @@ export function CartDrawer() {
             description: error.message || 'Unknown error',
             variant: 'destructive',
           });
-          // Don't break immediately, try to redeem others? 
-          // Or maybe breaking is safer. Let's continue for now but track failures.
+          break;
         }
       }
 
-      if (successCount > 0) {
+      if (successCount === items.length) {
         toast({
           title: 'Purchase Successful',
           description: `Successfully redeemed ${successCount} items!`,
         });
         clearCart();
         toggleCart();
-        // Ideally reload page or refetch balance
         window.location.reload(); 
+      } else if (successCount > 0) {
+        toast({
+          title: 'Partial Success',
+          description: `Redeemed ${successCount} items, but some failed.`,
+        });
+        setTimeout(() => window.location.reload(), 2000);
       }
     } catch (error: any) {
        toast({
